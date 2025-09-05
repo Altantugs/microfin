@@ -12,8 +12,9 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /app
 COPY . /app
 
-# Dependencies татах
-RUN composer install --no-dev --optimize-autoloader --no-scripts
+# Dependencies татах (plugins disable хийхгүйгээр)
+RUN composer install --no-dev --optimize-autoloader --no-interaction
+
 
 # Symfony app ажиллуулах
 CMD ["php", "-S", "0.0.0.0:8000", "-t", "public"]
