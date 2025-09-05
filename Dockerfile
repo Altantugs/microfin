@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y \
 
 # Composer суулгах
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+ENV COMPOSER_ALLOW_SUPERUSER=1
 
 # Ажиллах хавтас
 WORKDIR /app
@@ -17,4 +18,4 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 
 # Symfony app ажиллуулах
-CMD ["php", "-S", "0.0.0.0:8000", "-t", "public"]
+CMD ["sh","-c","php -S 0.0.0.0:$PORT -t public"]
