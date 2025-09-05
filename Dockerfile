@@ -1,4 +1,4 @@
-FROM php:8.2-cli
+≈≈FROM php:8.2-cli
 
 # Шаардлагатай сангууд
 RUN apt-get update && apt-get install -y \
@@ -13,7 +13,7 @@ WORKDIR /app
 COPY . /app
 
 # Dependencies татах
-RUN composer install --no-dev --optimize-autoloader
+RUN composer install --no-dev --optimize-autoloader --no-scripts
 
 # Symfony app ажиллуулах
 CMD ["php", "-S", "0.0.0.0:8000", "-t", "public"]
