@@ -13,9 +13,16 @@ ENV COMPOSER_ALLOW_SUPERUSER=1
 # Ажиллах хавтас
 WORKDIR /app
 
-# Build cache-д ээлтэй install
+# Dependencies install only
 COPY composer.json composer.lock* symfony.lock* ./
-RUN composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
+RUN composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction --no-scripts
+
+# Copy all code after composer
+COPY . .
+
+# Дараа нь scripts ажиллуул
+RUN composer install --no-dev --optimize-autoloader --no-interaction
+
 
 # PROD горим.
 ENV APP_ENV=prod
