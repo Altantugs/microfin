@@ -1,3 +1,26 @@
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>{% block title %}Welcome!{% endblock %}</title>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org%22></svg>">
+        {% block stylesheets %}
+        {% endblock %}
+
+        {% block javascripts %}
+        {% endblock %}
+    </head>
+    <body>
+        {% block body %}
+            <h1>MicroFin — Welcome</h1>
+            <p>App is running on Render ✅</p>
+            <p><a href="/healthz">Health</a></p>
+            <p><a href="{{ path('upload_excel') }}">Upload Excel</a></p>
+        {% endblock %}
+    </body>
+</html>
+
 <!DOCTYPE html>
 <html>
     <head>
