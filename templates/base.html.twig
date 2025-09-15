@@ -1,15 +1,13 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="UTF-8">
-    <title>{% block title %}MicroFin — Welcome{% endblock %}</title>
-  </head>
-  <body>
-    {% block body %}
-      <h1>MicroFin — Welcome</h1>
-      <p>App is running on Render ✅</p>
-      <p><a href="/healthz">Health</a></p>
-      <p><a href="{{ path('upload_excel') }}">Upload Excel</a></p>
-    {% endblock %}
-  </body>
+    <head>
+        <meta charset="UTF-8">
+        <title>{% block title %}Welcome!{% endblock %}</title>
+    </head>
+    <body>
+        <p><a href="/healthz">Health</a></p>
+        <p><a href="{{ path('upload_excel') }}">Upload Excel</a></p>
+
+        {% block body %}{% endblock %}
+    </body>
 </html>
