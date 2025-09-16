@@ -1,68 +1,35 @@
-FROM php:8.2-cli
+# PHP 8.3 болгоно (zipstream-php шаардлага)
+FROM php:8.3-cli
 
-# Системийн сангууд
+# Системийн багцууд + PHP өргөтгөлүүд
 RUN apt-get update && apt-get install -y \
-    git unzip curl ca-certificates libpq-dev libicu-dev libzip-dev zip \
- && docker-php-ext-install pdo pdo_pgsql intl zip opcache \
- && rm -rf /var/lib/apt/lists/*
+    git unzip libpq-dev libicu-dev libzip-dev zip \
+    libpng-dev libjpeg62-turbo-dev libfreetype6-dev \
+ && docker-php-ext-configure gd --with-jpeg --with-freetype \
+ && docker-php-ext-install -j$(nproc) gd pdo pdo_pgsql intl zip
 
 # Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-ENV COMPOSER_ALLOW_SUPERUSER=1
 
 # Ажиллах хавтас
 WORKDIR /app
 
-# Dependencies install only
+# Build кэшийг ашиглахын тулд эхлээд зөвхөн composer файлууд
 COPY composer.json composer.lock* symfony.lock* ./
+
+# post-install скриптүүдээс болж тасрахгүйн тулд --no-scripts
 RUN composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction --no-scripts
 
-# Copy all code after composer
+# Кодыг дараа нь хуулна
 COPY . .
 
-# Дараа нь scripts ажиллуул
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+# Autoload-оо production горимоор сайжруулна
+RUN composer dump-autoload --no-dev --optimize
 
-# Upload хэмжээ
-RUN printf "upload_max_filesize=10M\npost_max_size=10M\n" > /usr/local/etc/php/conf.d/uploads.ini
-
-
-# PROD горим.
+# Runtime env
 ENV APP_ENV=prod
 ENV APP_DEBUG=0
 
-# Symfony cache-ийг build үе дээр урьдчилж бэлдэнэ.
-RUN php bin/console cache:clear --env=prod \
- && php bin/console cache:warmup --env=prod
-
-
-# Үлдсэн код
-COPY . .
-
-# Prod ENV (+ кэшийг бэлдье)
-ENV APP_ENV=prod \
-    APP_DEBUG=0
-# Render дээр APP_SECRET-г Dashboard-оос ENV-ээр өг.
-RUN php bin/console cache:clear --env=prod \
- && php bin/console cache:warmup --env=prod
-
-# OPcache тохиргоо (prod-д маш чухал)
-RUN printf "%s\n" \
-  "opcache.enable=1" \
-  "opcache.enable_cli=1" \
-  "opcache.memory_consumption=192" \
-  "opcache.interned_strings_buffer=16" \
-  "opcache.max_accelerated_files=20000" \
-  "opcache.validate_timestamps=0" \
-  "opcache.jit=1255" \
-  "opcache.jit_buffer_size=64M" \
-  > /usr/local/etc/php/conf.d/opcache.ini
-
-# Фолдер permission (кэш/лог бичих)
-RUN chown -R www-data:www-data var \
- && find var -type d -exec chmod 775 {} \;
-
-USER www-data
-
-# IMPORTANT: built-in server-ийг router-тай ажиллуул!
-CMD ["sh","-c","php -S 0.0.0.0:$PORT -t public public/index.php"]
+# Render 8000 порт руу чиглүүлдэг
+EXPOSE 8000
+CMD ["php", "-S", "0.0.0.0:8000", "-t", "public"]
