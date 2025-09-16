@@ -66,7 +66,7 @@ class ExcelImportService
             $rawAmount   = (string)($r[$map['amount']] ?? '0');
             $amountFloat = $this->parseAmount($rawAmount);
 
-            // Чиглэл — OUT бол сөрөг болгох (хэрэв Excel дээр дандаа эерэгээр өгдөг бол хэрэгтэй)
+            // Чиглэл — OUT бол сөрөг болгох
             if (isset($map['dir'])) {
                 $dir = strtoupper(trim((string)$r[$map['dir']]));
                 $isIncome = in_array($dir, ['IN','ORLOGO','INCOME'], true);

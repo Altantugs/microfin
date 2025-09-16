@@ -2,9 +2,10 @@
 
 namespace App\Controller;
 
-use App\Entity\Transaction;
 use App\Service\ExcelImportService;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Repository\TransactionRepository;
+use App\Entity\Transaction;
+use Doctrine\ORM\EntityManagerInterface; // ← нэмнэ
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -13,10 +14,26 @@ use Symfony\Component\Routing\Annotation\Route;
 class ReportController extends AbstractController
 {
     #[Route('/upload', name: 'upload_excel')]
-    public function upload(Request $request, ExcelImportService $excelImportService): Response
+    public function upload(
+        Request $request,
+        ExcelImportService $excelImportService,
+        EntityManagerInterface $em // ← нэмэв
+    ): Response
     {
         if ($request->isMethod('POST')) {
-            $file = $request->files->get('excel_file');
+            // Хэрэв "Өмнөхийг устгах" сонгосон бол — бүх Transaction-ийг цэвэрлэнэ
+            if ($request->request->get('clear')) {
+                // DQL delete (RESTART IDENTITY хийхгүй, зөвхөн мөрийг устгана)
+                $em->createQuery('DELETE FROM App\Entity\Transaction t')->execute();
+
+                // Хэрэв Postgres дээр ID-г тэглэмээр байвал (сонголтоор):
+                // АНХААР: шууд SQL тул Postgres-д л ажиллана
+                // $meta = $em->getClassMetadata(Transaction::class);
+                // $table = $meta->getTableName(); // ихэнхдээ "transaction"
+                // $em->getConnection()->executeStatement(sprintf('TRUNCATE TABLE "%s" RESTART IDENTITY CASCADE', $table));
+            }
+
+            $file = $request->files->get('excel');
 
             if (!$file) {
                 $this->addFlash('error', 'Файл сонгогдоогүй.');
@@ -30,7 +47,6 @@ class ReportController extends AbstractController
                 $this->addFlash('error', 'Алдаа: '.$e->getMessage());
             }
 
-            // PRG
             return $this->redirectToRoute('upload_excel');
         }
 
@@ -38,11 +54,8 @@ class ReportController extends AbstractController
     }
 
     #[Route('/report', name: 'report_summary')]
-    public function summary(EntityManagerInterface $em): Response
+    public function summary(TransactionRepository $repo): Response
     {
-        $repo = $em->getRepository(Transaction::class);
-
-        // Нийт орлого, зарлага, тоо ширхэг
         $qb = $repo->createQueryBuilder('t');
         $qb->select(
             'SUM(CASE WHEN t.isIncome = true THEN t.amount ELSE 0 END) AS income',
@@ -53,10 +66,8 @@ class ReportController extends AbstractController
 
         $income  = (float) ($row['income'] ?? 0);
         $expense = (float) ($row['expense'] ?? 0);
-        // Зарлага сөрөг байж болно → үлдэгдэл = орлого + зарлага
         $balance = $income + $expense;
 
-        // Сүүлийн 10 гүйлгээ
         $latest = $repo->createQueryBuilder('t2')
             ->orderBy('t2.date', 'DESC')
             ->setMaxResults(10)
