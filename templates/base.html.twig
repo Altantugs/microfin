@@ -1,23 +1,24 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>{% block title %}Welcome!{% endblock %}</title>
-    </head>
-    <body>
-      {# Flash messages #}
-  {% for label, messages in app.flashes %}
-    <div class="flash {{ label }}" style="padding:10px;margin:10px 0;border:1px solid #ddd;">
+  <head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Microfin{% endblock %}</title>
+  </head>
+  <body style="font-family:system-ui;max-width:800px;margin:32px auto;padding:0 16px;">
+    <h1 style="margin:0 0 16px;">Microfin — Welcome</h1>
+
+    <p><a href="/">Home</a> · <a href="/healthz">Health</a> · <a href="{{ path('upload_excel') }}">Upload Excel</a></p>
+    <hr>
+
+    {# Flash messages #}
+    {% for label, messages in app.flashes %}
       {% for message in messages %}
-        <div>{{ message }}</div>
+        <div style="padding:8px 12px;margin:8px 0;border:1px solid #ddd;border-left:4px solid {{ label == 'success' ? '#22c55e' : '#ef4444' }};">
+          {{ message }}
+        </div>
       {% endfor %}
-    </div>
-  {% endfor %}
+    {% endfor %}
 
-  {% block body %}{% endblock %}
-        <p><a href="/healthz">Health</a></p>
-        <p><a href="{{ path('upload_excel') }}">Upload Excel</a></p>
-
-        {% block body %}{% endblock %}
-    </body>
+    {% block body %}{% endblock %}
+  </body>
 </html>
