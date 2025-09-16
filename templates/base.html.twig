@@ -7,8 +7,14 @@
   <body style="font-family:system-ui;max-width:800px;margin:32px auto;padding:0 16px;">
     <h1 style="margin:0 0 16px;">Microfin — Welcome</h1>
 
-    <p><a href="/">Home</a> · <a href="/healthz">Health</a> · <a href="{{ path('upload_excel') }}">Upload Excel</a></p>
-    <hr>
+    <p>
+  <a href="/">Home</a> ·
+  <a href="/healthz">Health</a> ·
+  <a href="{{ path('upload_excel') }}">Upload Excel</a> ·
+  <a href="{{ path('report_summary') }}">Report</a>
+</p>
+
+    
 
     {# Flash messages #}
     {% for label, messages in app.flashes %}
