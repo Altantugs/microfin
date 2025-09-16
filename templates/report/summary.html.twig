@@ -1,50 +1,47 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Report{% endblock %}
+{% block title %}Тайлан{% endblock %}
 
 {% block body %}
-  <h1>Санхүүгийн товч тайлан</h1>
+  <h1>Нийт тайлан</h1>
 
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0;">
-    <div style="border:1px solid #ddd;padding:12px;border-left:4px solid #22c55e;">
-      <div>Орлого</div>
-      <div style="font-size:20px;font-weight:700;">{{ income|number_format(0, '.', ',') }} ₮</div>
-    </div>
-    <div style="border:1px solid #ddd;padding:12px;border-left:4px solid #ef4444;">
-      <div>Зарлага</div>
-      <div style="font-size:20px;font-weight:700;">{{ expense|number_format(0, '.', ',') }} ₮</div>
-    </div>
-    <div style="border:1px solid #ddd;padding:12px;border-left:4px solid #3b82f6;">
-      <div>Үлдэгдэл</div>
-      <div style="font-size:20px;font-weight:700;">{{ balance|number_format(0, '.', ',') }} ₮</div>
-    </div>
+  {% for label, messages in app.flashes %}
+    {% for m in messages %}
+      <div style="padding:8px;margin:6px 0;border:1px solid #ddd">{{ m }}</div>
+    {% endfor %}
+  {% endfor %}
+
+  <div style="display:flex;gap:24px;margin:16px 0;">
+    <div><b>Орлого:</b> {{ income|number_format(2, '.', ',') }}</div>
+    <div><b>Зарлага:</b> {{ expense|number_format(2, '.', ',') }}</div>
+    <div><b>Үлдэгдэл:</b> {{ balance|number_format(2, '.', ',') }}</div>
   </div>
 
-  <h2>Сүүлийн 10 гүйлгээ</h2>
-  <table border="1" cellspacing="0" cellpadding="6">
+  <h3>Сүүлийн 10 гүйлгээ</h3>
+  <table border="1" cellpadding="6" cellspacing="0">
     <thead>
-      <tr>
-        <th>Огноо</th>
-        <th>Тайлбар</th>
-        <th>Дүн</th>
-        <th>Чиглэл</th>
-        <th>Ангилал</th>
-        <th>Валют</th>
-      </tr>
+    <tr>
+      <th>Огноо</th>
+      <th>Тайлбар</th>
+      <th>Дүн</th>
+      <th>Чиглэл</th>
+      <th>Ангилал</th>
+      <th>Валют</th>
+    </tr>
     </thead>
     <tbody>
-      {% for t in latest %}
-        <tr>
-          <td>{{ t.date|date('Y-m-d') }}</td>
-          <td>{{ t.description }}</td>
-          <td style="text-align:right;">{{ t.amount|number_format(2, '.', ',') }}</td>
-          <td>{{ t.isIncome ? 'IN' : 'OUT' }}</td>
-          <td>{{ t.category ?? '' }}</td>
-          <td>{{ t.currency ?? 'MNT' }}</td>
-        </tr>
-      {% else %}
-        <tr><td colspan="6">Мэдээлэл алга.</td></tr>
-      {% endfor %}
+    {% for t in latest %}
+      <tr>
+        <td>{{ t.date ? t.date|date('Y-m-d') : '' }}</td>
+        <td>{{ t.description }}</td>
+        <td style="text-align:right">{{ t.amount|number_format(2, '.', ',') }}</td>
+        <td>{{ t.isIncome ? 'Орлого' : 'Зарлага' }}</td>
+        <td>{{ t.category ?: '-' }}</td>
+        <td>{{ t.currency ?: 'MNT' }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6">Мэдээлэл алга.</td></tr>
+    {% endfor %}
     </tbody>
   </table>
 {% endblock %}
