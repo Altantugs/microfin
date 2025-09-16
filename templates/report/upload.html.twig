@@ -4,14 +4,19 @@
 {% block body %}
   <h1>📊 Банкны хуулга Excel upload</h1>
 
+  {# Flash мессежүүд #}
   {% for label, messages in app.flashes %}
     {% for msg in messages %}
       <div class="flash-{{ label }}">{{ msg }}</div>
     {% endfor %}
   {% endfor %}
 
-  <form method="post" enctype="multipart/form-data">
-    <input type="file" name="excel" accept=".xlsx,.xls,.csv" required>
+  {# === Таны байсан маягт (checkbox хэвээр үлдсэн) === #}
+  <form method="post" enctype="multipart/form-data" style="border:1px solid #ddd;padding:12px;margin-bottom:16px">
+    <div style="margin-bottom:12px">
+      <input type="file" name="excel" accept=".xlsx,.xls,.csv" required>
+    </div>
+
     <button type="submit">Upload</button>
 
     <label style="display:block;margin:8px 0;">
@@ -19,4 +24,81 @@
       Өмнөх бичлэгүүдийг устгаад шинээр импортлох
     </label>
   </form>
+
+  {# === Нэмэлт: Банкны хуулга хэлбэрийн жишээ ба заавар (UI харагдац) === #}
+  <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;margin-bottom:16px">
+    <div style="flex:1;min-width:320px">
+      <h3 style="margin:8px 0">Харагдах хэлбэр (Bank statement)</h3>
+      <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;margin-bottom:8px">
+        <thead>
+          <tr>
+            <th>Огноо</th>
+            <th>Гүйлгээний утга</th>
+            <th>Дүн</th>
+            <th>Орлого</th>
+            <th>Зарлага</th>
+            <th>Үлдэгдэл</th>
+            <th>Төрөл</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>2025-09-01</td>
+            <td>Эхний үлдэгдэл</td>
+            <td>1,000,000.00</td>
+            <td>1,000,000.00</td>
+            <td></td>
+            <td>1,000,000.00</td>
+            <td>Opening</td>
+          </tr>
+          <tr>
+            <td>2025-09-02</td>
+            <td>Оффисын хэрэгсэл</td>
+            <td>-25,000.00</td>
+            <td></td>
+            <td>25,000.00</td>
+            <td>975,000.00</td>
+            <td>Office</td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="font-size:13px;color:#666;margin:0">
+        Дээрх нь **харагдац**. Импортын формат доорх заавраар (одоогийн толгойгоор) явж байгаа —
+        дараагийн алхамд “Орлого/Зарлага/Үлдэгдэл”-тэй толгойг шууд унших боломжийг импортод
+        нэмж өгнө.
+      </p>
+    </div>
+
+    <div style="flex:1;min-width:320px">
+      <h3 style="margin:8px 0">Одоогоор таньж буй толгой (импортын формат)</h3>
+      <ul style="margin-top:0">
+        <li><b>Огноо</b> (эсвэл <code>date</code>)</li>
+        <li><b>Тайлбар</b> (эсвэл <code>description</code>, <code>гүйлгээ</code>, <code>утга</code>)</li>
+        <li><b>Дүн</b> (эсвэл <code>amount</code>, <code>дүн</code>, <code>дvн</code>)</li>
+        <li><b>Чиглэл</b> (сонголттой; <code>direction</code>, <code>чиглэл</code> — <code>IN/OUT</code> дэмжинэ)</li>
+        <li><b>Ангилал</b> (сонголттой; <code>category</code>, <code>зориулалт</code>, <code>ангилал</code>)</li>
+        <li><b>Валют</b> (сонголттой; <code>currency</code>, <code>валют</code>; default: MNT)</li>
+      </ul>
+
+      <p style="margin:8px 0">Жишээ CSV:</p>
+<pre style="white-space:pre-wrap;border:1px solid #eee;padding:8px;background:#fafafa">
+Огноо,Тайлбар,Дүн,Чиглэл,Ангилал,Валют
+2025-09-01,Эхний үлдэгдэл,1000000,IN,Opening,MNT
+2025-09-02,Оффисын хэрэгсэл,25000,OUT,Office,MNT
+2025-09-03,Кофе борлуулалт,85000,IN,Sales,MNT
+</pre>
+      <p style="font-size:13px;color:#666;margin:0">
+        * Хэрэв <b>Чиглэл</b> байхгүй бол зарлагыг <code>-25000</code> гэх мэт **урд талын -** тэмдэгтэй бич.
+      </p>
+    </div>
+  </div>
+
+  <details>
+    <summary><b>Төлөвлөгөө: Банкны хуулга толгойг шууд дэмжих</b></summary>
+    <p style="margin:8px 0">
+      Дараагийн алхмаар импортын сервисийг дараах толгойг шууд уншдаг болгоно:
+      <code>Огноо, Гүйлгээний утга, Дүн, Орлого, Зарлага, Үлдэгдэл, Төрөл</code>.
+      (Орлого/Зарлагын аль нэг нь бөглөгдвөл чиглэлийг тогтооно; Үлдэгдэл нь сонголттой.)
+    </p>
+  </details>
 {% endblock %}

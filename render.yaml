@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: mini-finance
+    env: docker
+    plan: starter
+    autoDeploy: true
+    healthCheckPath: /healthz
+    region: frankfurt
+    envVars:
+      - key: APP_ENV
+        value: prod
+      - key: OPENING_BALANCE
+        value: "0"
+      - key: DATABASE_URL
+        value: "sqlite:////var/data/data.db"
+    disks:
+      - name: app-data
+        mountPath: /var/data
+        sizeGB: 1

@@ -5,7 +5,7 @@ namespace App\Controller;
 use App\Service\ExcelImportService;
 use App\Repository\TransactionRepository;
 use App\Entity\Transaction;
-use Doctrine\ORM\EntityManagerInterface; // ← нэмнэ
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,24 +17,15 @@ class ReportController extends AbstractController
     public function upload(
         Request $request,
         ExcelImportService $excelImportService,
-        EntityManagerInterface $em // ← нэмэв
+        EntityManagerInterface $em
     ): Response
     {
         if ($request->isMethod('POST')) {
-            // Хэрэв "Өмнөхийг устгах" сонгосон бол — бүх Transaction-ийг цэвэрлэнэ
             if ($request->request->get('clear')) {
-                // DQL delete (RESTART IDENTITY хийхгүй, зөвхөн мөрийг устгана)
                 $em->createQuery('DELETE FROM App\Entity\Transaction t')->execute();
-
-                // Хэрэв Postgres дээр ID-г тэглэмээр байвал (сонголтоор):
-                // АНХААР: шууд SQL тул Postgres-д л ажиллана
-                // $meta = $em->getClassMetadata(Transaction::class);
-                // $table = $meta->getTableName(); // ихэнхдээ "transaction"
-                // $em->getConnection()->executeStatement(sprintf('TRUNCATE TABLE "%s" RESTART IDENTITY CASCADE', $table));
             }
 
             $file = $request->files->get('excel');
-
             if (!$file) {
                 $this->addFlash('error', 'Файл сонгогдоогүй.');
                 return $this->redirectToRoute('upload_excel');
@@ -53,32 +44,83 @@ class ReportController extends AbstractController
         return $this->render('report/upload.html.twig');
     }
 
-    #[Route('/report', name: 'report_summary')]
-    public function summary(TransactionRepository $repo): Response
+    #[Route('/report', name: 'report_summary', methods: ['GET'])]
+    public function summary(Request $request, TransactionRepository $repo): Response
     {
-        $qb = $repo->createQueryBuilder('t');
-        $qb->select(
-            'SUM(CASE WHEN t.isIncome = true THEN t.amount ELSE 0 END) AS income',
-            'SUM(CASE WHEN t.isIncome = false THEN t.amount ELSE 0 END) AS expense',
-            'COUNT(t.id) AS cnt'
-        );
-        $row = $qb->getQuery()->getSingleResult();
+        // --- Фильтерүүд
+        $opening = $request->query->get('opening', $_ENV['OPENING_BALANCE'] ?? 0);
+        $opening = is_numeric($opening) ? (float)$opening : 0.0;
 
-        $income  = (float) ($row['income'] ?? 0);
-        $expense = (float) ($row['expense'] ?? 0);
-        $balance = $income + $expense;
+        $fromStr = trim((string) $request->query->get('from', ''));
+        $toStr   = trim((string) $request->query->get('to', ''));
+        $type    = trim((string) $request->query->get('type', ''));   // category
+        $dir     = trim((string) $request->query->get('dir', ''));    // 'in' | 'out' | ''
 
-        $latest = $repo->createQueryBuilder('t2')
-            ->orderBy('t2.date', 'DESC')
-            ->setMaxResults(10)
+        // --- Distinct төрлүүд (select-д үзүүлэх)
+        $types = $repo->createQueryBuilder('t')
+            ->select('DISTINCT t.category')
+            ->where('t.category IS NOT NULL AND t.category <> \'\'')
+            ->orderBy('t.category', 'ASC')
             ->getQuery()
-            ->getResult();
+            ->getSingleColumnResult();
+
+        // --- Шүүлттэй query
+        $qb = $repo->createQueryBuilder('t')
+            ->orderBy('t.date', 'ASC')
+            ->addOrderBy('t.id', 'ASC');
+
+        if ($fromStr !== '') {
+            try {
+                $from = new \DateTimeImmutable($fromStr.' 00:00:00');
+                $qb->andWhere('t.date >= :from')->setParameter('from', $from);
+            } catch (\Throwable $e) {}
+        }
+        if ($toStr !== '') {
+            try {
+                // өдрийн төгсгөл хүртэл
+                $to = new \DateTimeImmutable($toStr.' 23:59:59');
+                $qb->andWhere('t.date <= :to')->setParameter('to', $to);
+            } catch (\Throwable $e) {}
+        }
+        if ($type !== '') {
+            $qb->andWhere('t.category = :cat')->setParameter('cat', $type);
+        }
+        if ($dir === 'in') {
+            $qb->andWhere('t.isIncome = true');
+        } elseif ($dir === 'out') {
+            $qb->andWhere('t.isIncome = false');
+        }
+
+        $filtered = $qb->getQuery()->getResult();
+
+        // --- Нийт дүнгүүд (шүүлттэй өгөгдлөөс)
+        $income = 0.0; $expense = 0.0;
+        foreach ($filtered as $t) {
+            $amt = (float)$t->getAmount();
+            if ($t->isIsIncome()) $income += abs($amt);
+            else                  $expense += abs($amt);
+        }
+
+        // --- Эцсийн үлдэгдэл = эхлэх үлдэгдэл + (орлого - зарлага)
+        $balance = $opening + ($income - $expense);
+
+        // --- Сүүлийн 10 мөр (ASC дарааллаас сүүлчийн 10-ыг авна)
+        $latest = array_slice($filtered, max(0, count($filtered) - 10));
 
         return $this->render('report/summary.html.twig', [
-            'income'  => $income,
-            'expense' => $expense,
-            'balance' => $balance,
-            'latest'  => $latest,
+            'income'         => $income,
+            'expense'        => $expense,
+            'balance'        => $balance,
+            'latest'         => $latest,
+            'openingBalance' => $opening,
+            'filters'        => [
+                'from' => $fromStr,
+                'to'   => $toStr,
+                'type' => $type,
+                'dir'  => $dir,
+            ],
+            'types'          => $types,
+            'totalCount'     => count($filtered),
         ]);
     }
 }

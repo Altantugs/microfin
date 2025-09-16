@@ -5,43 +5,92 @@
 {% block body %}
   <h1>Нийт тайлан</h1>
 
+  {# Flash #}
   {% for label, messages in app.flashes %}
     {% for m in messages %}
       <div style="padding:8px;margin:6px 0;border:1px solid #ddd">{{ m }}</div>
     {% endfor %}
   {% endfor %}
 
+  {# Фильтер form #}
+  <form method="get" action="{{ path('report_summary') }}"
+        style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin:12px 0;border:1px solid #eee;padding:12px">
+    <div>
+      <label>Эхлэх огноо</label><br>
+      <input type="date" name="from" value="{{ filters.from|default('') }}">
+    </div>
+    <div>
+      <label>Дуусах огноо</label><br>
+      <input type="date" name="to" value="{{ filters.to|default('') }}">
+    </div>
+    <div>
+      <label>Төрөл</label><br>
+      <select name="type">
+        <option value="">— Бүгд —</option>
+        {% for t in types %}
+          <option value="{{ t }}" {{ filters.type is defined and filters.type == t ? 'selected' : '' }}>{{ t }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Чиглэл</label><br>
+      <select name="dir">
+        <option value="">— Бүгд —</option>
+        <option value="in"  {{ filters.dir == 'in'  ? 'selected' : '' }}>Орлого</option>
+        <option value="out" {{ filters.dir == 'out' ? 'selected' : '' }}>Зарлага</option>
+      </select>
+    </div>
+    <div>
+      <label>Эхлэх үлдэгдэл</label><br>
+      <input type="number" step="0.01" name="opening" value="{{ openingBalance|default(0) }}">
+    </div>
+    <div>
+      <button type="submit">Шүүх</button>
+      <a href="{{ path('report_summary') }}" style="margin-left:8px">Цэвэрлэх</a>
+    </div>
+  </form>
+
+  {# Дүнгийн самбар #}
   <div style="display:flex;gap:24px;margin:16px 0;">
+    <div><b>Эхлэх үлдэгдэл:</b> {{ (openingBalance|default(0))|number_format(2, '.', ',') }}</div>
     <div><b>Орлого:</b> {{ income|number_format(2, '.', ',') }}</div>
     <div><b>Зарлага:</b> {{ expense|number_format(2, '.', ',') }}</div>
     <div><b>Үлдэгдэл:</b> {{ balance|number_format(2, '.', ',') }}</div>
+    <div style="color:#666"><b>Мөр:</b> {{ totalCount }}</div>
   </div>
 
   <h3>Сүүлийн 10 гүйлгээ</h3>
-  <table border="1" cellpadding="6" cellspacing="0">
+  <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse; width:100%;">
     <thead>
-    <tr>
-      <th>Огноо</th>
-      <th>Тайлбар</th>
-      <th>Дүн</th>
-      <th>Чиглэл</th>
-      <th>Ангилал</th>
-      <th>Валют</th>
-    </tr>
+      <tr>
+        <th>Огноо</th>
+        <th>Гүйлгээний утга</th>
+        <th style="text-align:right">Дүн</th>
+        <th style="text-align:right">Орлого</th>
+        <th style="text-align:right">Зарлага</th>
+        <th style="text-align:right">Үлдэгдэл</th>
+        <th>Төрөл</th>
+      </tr>
     </thead>
     <tbody>
-    {% for t in latest %}
-      <tr>
-        <td>{{ t.date ? t.date|date('Y-m-d') : '' }}</td>
-        <td>{{ t.description }}</td>
-        <td style="text-align:right">{{ t.amount|number_format(2, '.', ',') }}</td>
-        <td>{{ t.isIncome ? 'Орлого' : 'Зарлага' }}</td>
-        <td>{{ t.category ?: '-' }}</td>
-        <td>{{ t.currency ?: 'MNT' }}</td>
-      </tr>
-    {% else %}
-      <tr><td colspan="6">Мэдээлэл алга.</td></tr>
-    {% endfor %}
+      {% set running = openingBalance|default(0) %}
+      {% if latest is not empty %}
+        {% for t in latest %}
+          {% set amt = t.amount|float %}
+          {% set running = running + amt %}
+          <tr>
+            <td>{{ t.date ? t.date|date('Y-m-d') : '' }}</td>
+            <td>{{ t.description }}</td>
+            <td style="text-align:right">{{ amt|number_format(2, '.', ',') }}</td>
+            <td style="text-align:right">{{ t.isIncome ? amt|number_format(2, '.', ',') : '' }}</td>
+            <td style="text-align:right">{{ not t.isIncome ? (amt * -1)|number_format(2, '.', ',') : '' }}</td>
+            <td style="text-align:right">{{ running|number_format(2, '.', ',') }}</td>
+            <td>{{ t.category ?: '-' }}</td>
+          </tr>
+        {% endfor %}
+      {% else %}
+        <tr><td colspan="7">Мэдээлэл алга.</td></tr>
+      {% endif %}
     </tbody>
   </table>
 {% endblock %}
