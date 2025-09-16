@@ -1,33 +1,35 @@
-# PHP 8.3 (zipstream-php шаардлага)
 FROM php:8.3-cli
 
-# Системийн багцууд + PHP өргөтгөлүүд (PhpSpreadsheet-д GD хэрэгтэй)
+# 1. Системийн хэрэгцээт багцууд + PHP өргөтгөлүүд
 RUN apt-get update && apt-get install -y \
     git unzip libpq-dev libicu-dev libzip-dev zip \
-    libpng-dev libjpeg62-turbo-dev libfreetype6-dev \
- && docker-php-ext-configure gd --with-jpeg --with-freetype \
- && docker-php-ext-install -j$(nproc) gd pdo pdo_pgsql intl zip
+    libfreetype6-dev libjpeg62-turbo-dev libpng-dev \
+ && docker-php-ext-configure gd --with-freetype --with-jpeg \
+ && docker-php-ext-install -j$(nproc) gd pdo pdo_pgsql intl zip \
+ && rm -rf /var/lib/apt/lists/*
 
-# Composer
+# 2. Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# 3. Prod орчны тохиргоо + auto-scripts алгасах
 ENV COMPOSER_ALLOW_SUPERUSER=1
-
-# Ажиллах хавтас
-WORKDIR /app
-
-# 1) Кэшэнд ээлтэй алхам: зөвхөн composer файлуудыг эхлээд хуулж install (NO SCRIPTS)
-COPY composer.json composer.lock* symfony.lock* ./
-RUN composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction --no-scripts
-
-# 2) Бүх кодоо хуулна
-COPY . .
-
-# 3) Одоо scripts-тайгаар дахин install → autoload_runtime.php үүснэ
-RUN composer install --no-dev --optimize-autoloader --no-interaction
-
-# Prod env
 ENV APP_ENV=prod
 ENV APP_DEBUG=0
+ENV SYMFONY_SKIP_AUTO_SCRIPT=1
 
+# 4. Ажиллах хавтас
+WORKDIR /app
+
+# 5. Dependency install (build cache-д ээлтэй)
+COPY composer.json composer.lock* symfony.lock* ./
+RUN composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
+
+# 6. Кодыг хуулна
+COPY . /app
+
+# 7. (сонголт) cache warmup хийх бол auto-scripts алгассан тул гараар хийж болно
+# RUN php bin/console cache:warmup --env=prod || true
+
+# 8. Symfony app ажиллуулах
 EXPOSE 8000
 CMD ["php", "-S", "0.0.0.0:8000", "-t", "public"]
