@@ -47,24 +47,34 @@ class ReportController extends AbstractController
     #[Route('/report', name: 'report_summary', methods: ['GET'])]
     public function summary(Request $request, TransactionRepository $repo): Response
     {
-        // --- Фильтерүүд
+        // --- Параметрүүд
         $opening = $request->query->get('opening', $_ENV['OPENING_BALANCE'] ?? 0);
         $opening = is_numeric($opening) ? (float)$opening : 0.0;
 
         $fromStr = trim((string) $request->query->get('from', ''));
         $toStr   = trim((string) $request->query->get('to', ''));
-        $type    = trim((string) $request->query->get('type', ''));   // category
-        $dir     = trim((string) $request->query->get('dir', ''));    // 'in' | 'out' | ''
+        $type    = trim((string) $request->query->get('type', ''));
+        $dir     = trim((string) $request->query->get('dir', ''));
 
-        // --- Distinct төрлүүд (select-д үзүүлэх)
-        $types = $repo->createQueryBuilder('t')
+        // --- Төрлүүдийн жагсаалт (distinct category)
+        $typesQb = $repo->createQueryBuilder('t')
             ->select('DISTINCT t.category')
             ->where('t.category IS NOT NULL AND t.category <> \'\'')
             ->orderBy('t.category', 'ASC')
-            ->getQuery()
-            ->getSingleColumnResult();
+            ->getQuery();
 
-        // --- Шүүлттэй query
+        // Doctrine 2/3 аль ч хувилбарт ажиллах бат бөх аргаар массив гаргана
+        $typesRows = $typesQb->getArrayResult();
+        $types = [];
+        foreach ($typesRows as $row) {
+            // $row = ['category' => '...'] гэх хэлбэртэй
+            $val = $row['category'] ?? null;
+            if ($val !== null && $val !== '') {
+                $types[] = $val;
+            }
+        }
+
+        // --- Өгөгдөл (шүүлттэй)
         $qb = $repo->createQueryBuilder('t')
             ->orderBy('t.date', 'ASC')
             ->addOrderBy('t.id', 'ASC');
@@ -77,7 +87,6 @@ class ReportController extends AbstractController
         }
         if ($toStr !== '') {
             try {
-                // өдрийн төгсгөл хүртэл
                 $to = new \DateTimeImmutable($toStr.' 23:59:59');
                 $qb->andWhere('t.date <= :to')->setParameter('to', $to);
             } catch (\Throwable $e) {}
@@ -93,18 +102,17 @@ class ReportController extends AbstractController
 
         $filtered = $qb->getQuery()->getResult();
 
-        // --- Нийт дүнгүүд (шүүлттэй өгөгдлөөс)
+        // --- Нийт дүн
         $income = 0.0; $expense = 0.0;
         foreach ($filtered as $t) {
-            $amt = (float)$t->getAmount();
+            /** @var Transaction $t */
+            $amt = (float) $t->getAmount(); // amount нь string байж болох тул float болгож байна
             if ($t->isIsIncome()) $income += abs($amt);
             else                  $expense += abs($amt);
         }
-
-        // --- Эцсийн үлдэгдэл = эхлэх үлдэгдэл + (орлого - зарлага)
         $balance = $opening + ($income - $expense);
 
-        // --- Сүүлийн 10 мөр (ASC дарааллаас сүүлчийн 10-ыг авна)
+        // --- Сүүлийн 10 мөр (ASC-аас сүүлийн 10-ыг авна)
         $latest = array_slice($filtered, max(0, count($filtered) - 10));
 
         return $this->render('report/summary.html.twig', [

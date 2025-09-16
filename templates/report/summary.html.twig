@@ -5,14 +5,12 @@
 {% block body %}
   <h1>Нийт тайлан</h1>
 
-  {# Flash #}
   {% for label, messages in app.flashes %}
     {% for m in messages %}
       <div style="padding:8px;margin:6px 0;border:1px solid #ddd">{{ m }}</div>
     {% endfor %}
   {% endfor %}
 
-  {# Фильтер form #}
   <form method="get" action="{{ path('report_summary') }}"
         style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin:12px 0;border:1px solid #eee;padding:12px">
     <div>
@@ -27,7 +25,7 @@
       <label>Төрөл</label><br>
       <select name="type">
         <option value="">— Бүгд —</option>
-        {% for t in types %}
+        {% for t in types|default([]) %}
           <option value="{{ t }}" {{ filters.type is defined and filters.type == t ? 'selected' : '' }}>{{ t }}</option>
         {% endfor %}
       </select>
@@ -36,8 +34,8 @@
       <label>Чиглэл</label><br>
       <select name="dir">
         <option value="">— Бүгд —</option>
-        <option value="in"  {{ filters.dir == 'in'  ? 'selected' : '' }}>Орлого</option>
-        <option value="out" {{ filters.dir == 'out' ? 'selected' : '' }}>Зарлага</option>
+        <option value="in"  {{ filters.dir|default('') == 'in'  ? 'selected' : '' }}>Орлого</option>
+        <option value="out" {{ filters.dir|default('') == 'out' ? 'selected' : '' }}>Зарлага</option>
       </select>
     </div>
     <div>
@@ -50,13 +48,12 @@
     </div>
   </form>
 
-  {# Дүнгийн самбар #}
   <div style="display:flex;gap:24px;margin:16px 0;">
     <div><b>Эхлэх үлдэгдэл:</b> {{ (openingBalance|default(0))|number_format(2, '.', ',') }}</div>
-    <div><b>Орлого:</b> {{ income|number_format(2, '.', ',') }}</div>
-    <div><b>Зарлага:</b> {{ expense|number_format(2, '.', ',') }}</div>
-    <div><b>Үлдэгдэл:</b> {{ balance|number_format(2, '.', ',') }}</div>
-    <div style="color:#666"><b>Мөр:</b> {{ totalCount }}</div>
+    <div><b>Орлого:</b> {{ (income|default(0))|number_format(2, '.', ',') }}</div>
+    <div><b>Зарлага:</b> {{ (expense|default(0))|number_format(2, '.', ',') }}</div>
+    <div><b>Үлдэгдэл:</b> {{ (balance|default(0))|number_format(2, '.', ',') }}</div>
+    <div style="color:#666"><b>Мөр:</b> {{ totalCount|default(0) }}</div>
   </div>
 
   <h3>Сүүлийн 10 гүйлгээ</h3>
@@ -74,7 +71,7 @@
     </thead>
     <tbody>
       {% set running = openingBalance|default(0) %}
-      {% if latest is not empty %}
+      {% if latest is defined and latest is not empty %}
         {% for t in latest %}
           {% set amt = t.amount|float %}
           {% set running = running + amt %}
