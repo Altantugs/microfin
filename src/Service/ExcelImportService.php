@@ -10,11 +10,6 @@ class ExcelImportService
 {
     public function __construct(private EntityManagerInterface $em) {}
 
-    /**
-     * Excel header жишээ:
-     * Date, Description, Amount, Direction(IN/OUT), Category, Currency
-     * Мөн монгол хэлний: Огноо, Гүйлгээ/Утга, Дүн, Чиглэл, Зориулалт/Ангилал, Валют
-     */
     public function import(string $filepath): int
     {
         $sheet = IOFactory::load($filepath)->getActiveSheet();
@@ -44,7 +39,7 @@ class ExcelImportService
 
         $count = 0;
         $total = count($rows);
-        for ($i=2; $i <= $total; $i++) {
+        for ($i = 2; $i <= $total; $i++) {
             $r = $rows[$i] ?? null;
             if (!$r) continue;
 
@@ -67,19 +62,25 @@ class ExcelImportService
             // Тайлбар
             $t->setDescription((string)$r[$map['desc']]);
 
-            // Дүн ("," → "." гэх мэт normalize)
-            $rawAmount = (string)($r[$map['amount']] ?? '0');
-            $norm = str_replace([' ', ','], ['', '.'], $rawAmount);
-            $val = number_format((float)$norm, 2, '.', '');
-            $t->setAmount($val);
+            // Дүн — parseAmount ашиглана
+            $rawAmount   = (string)($r[$map['amount']] ?? '0');
+            $amountFloat = $this->parseAmount($rawAmount);
 
-            // Орлого/Зарлага (Direction байхгүй бол дүн > 0-г орлого гэж үзье)
+            // Чиглэл — OUT бол сөрөг болгох (хэрэв Excel дээр дандаа эерэгээр өгдөг бол хэрэгтэй)
             if (isset($map['dir'])) {
-                $dir = strtoupper((string)$r[$map['dir']]);
-                $t->setIsIncome($dir === 'IN' || $dir === 'ORLOGO' || $dir === 'INCOME');
+                $dir = strtoupper(trim((string)$r[$map['dir']]));
+                $isIncome = in_array($dir, ['IN','ORLOGO','INCOME'], true);
+                if (!$isIncome && $amountFloat > 0) {
+                    $amountFloat = -$amountFloat;
+                }
+                $t->setIsIncome($isIncome);
             } else {
-                $t->setIsIncome(((float)$val) >= 0);
+                $t->setIsIncome($amountFloat >= 0);
             }
+
+            // Хадгалах формат (string decimal 2 орон)
+            $val = number_format($amountFloat, 2, '.', '');
+            $t->setAmount($val);
 
             // Ангилал, Валют
             $t->setCategory(isset($map['cat']) ? (string)$r[$map['cat']] : null);
@@ -91,6 +92,65 @@ class ExcelImportService
 
         $this->em->flush();
         return $count;
-        return $importedRowCount;
+    }
+
+    private function parseAmount(string $s): float
+    {
+        $s = trim($s);
+
+        // Аль хэдийн энгийн 1234 эсвэл 1234.56 бол шууд
+        if ($s === '' || preg_match('/^\s*[+-]?\d+(\.\d+)?\s*$/', $s)) {
+            return (float) $s;
+        }
+
+        $hasComma = str_contains($s, ',');
+        $hasDot   = str_contains($s, '.');
+
+        if ($hasComma && $hasDot) {
+            // Хамгийн сүүлчийн тэмдэг нь ихэвчлэн аравтын тусгаарлагч
+            $lastComma = strrpos($s, ',');
+            $lastDot   = strrpos($s, '.');
+            if ($lastComma !== false && $lastDot !== false) {
+                if ($lastComma > $lastDot) {
+                    // ЕХ: 1.500.000,25
+                    $s = str_replace('.', '', $s);
+                    $s = str_replace(',', '.', $s);
+                } else {
+                    // АНУ: 1,500,000.25
+                    $s = str_replace(',', '', $s);
+                }
+            }
+            return (float) $s;
+        }
+
+        if ($hasComma) {
+            if (substr_count($s, ',') > 1) {
+                // Олон comma = мянгтын тусгаарлагч
+                $s = str_replace(',', '', $s);
+                return (float) $s;
+            }
+            // Нэг comma байвал баруун тал нь 3 оронтой эсэхээр шийдье
+            [$left, $right] = array_pad(explode(',', $s, 2), 2, '');
+            if (preg_match('/^\d{3}$/', $right)) {
+                $s = $left . $right; // мянгтын comma-г авч байна
+            } else {
+                $s = $left . '.' . $right; // аравтын comma-г '.' болголоо
+            }
+            return (float) $s;
+        }
+
+        if ($hasDot) {
+            if (substr_count($s, '.') > 1) {
+                // Олон dot = ихэнх нь мянгтын, бүгдийг авч, бүхэл тоо/сүүлийнх үлдэнэ
+                $parts = explode('.', $s);
+                $last  = array_pop($parts);
+                $s = implode('', $parts) . $last;
+            }
+            return (float) $s;
+        }
+
+        // Зайтай мянгтын тэмдэг: "1 500 000"
+        $s = str_replace(' ', '', $s);
+        return (float) $s;
     }
 }
