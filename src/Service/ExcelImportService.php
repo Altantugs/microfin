@@ -184,15 +184,15 @@ class ExcelImportService
         return $count;
     }
 
-    // Header normalize
+    // Header normalize — ө/ү-г БҮҮ соль (зөвхөн ё→е)
     private function normHeader(string $h): string
     {
         $h = str_replace("\xC2\xA0", ' ', $h);        // NBSP → space
         $h = preg_replace('/\s+/u', ' ', $h);         // олон space → 1
         $h = trim($h);
         $h = mb_strtolower($h);
-        $h = str_replace(['ё','ө','ү'], ['е','o','u'], $h); // mn normalize
-        $h = preg_replace('/[,:;()\[\]{}]+/u', '', $h);     // тэмдэгтүүдийг авч хая
+        $h = str_replace(['ё'], ['е'], $h);           // зөвхөн ё→е
+        $h = preg_replace('/[,:;()\[\]{}]+/u', '', $h);     // илүү тэмдэгтүүд
         $h = trim($h);
         return $h;
     }
