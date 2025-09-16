@@ -47,89 +47,96 @@ class ReportController extends AbstractController
     #[Route('/report', name: 'report_summary', methods: ['GET'])]
     public function summary(Request $request, TransactionRepository $repo): Response
     {
-        // --- Параметрүүд
-        $opening = $request->query->get('opening', $_ENV['OPENING_BALANCE'] ?? 0);
-        $opening = is_numeric($opening) ? (float)$opening : 0.0;
+        try {
+            // --- Параметрүүд
+            $opening = $request->query->get('opening', $_ENV['OPENING_BALANCE'] ?? 0);
+            $opening = is_numeric($opening) ? (float)$opening : 0.0;
 
-        $fromStr = trim((string) $request->query->get('from', ''));
-        $toStr   = trim((string) $request->query->get('to', ''));
-        $type    = trim((string) $request->query->get('type', ''));
-        $dir     = trim((string) $request->query->get('dir', ''));
+            $fromStr = trim((string) $request->query->get('from', ''));
+            $toStr   = trim((string) $request->query->get('to', ''));
+            $type    = trim((string) $request->query->get('type', ''));
+            $dir     = trim((string) $request->query->get('dir', ''));
 
-        // --- Төрлүүдийн жагсаалт (distinct category)
-        $typesQb = $repo->createQueryBuilder('t')
-            ->select('DISTINCT t.category')
-            ->where('t.category IS NOT NULL AND t.category <> \'\'')
-            ->orderBy('t.category', 'ASC')
-            ->getQuery();
+            // --- Төрлүүдийн жагсаалт (distinct category)
+            $typesRows = $repo->createQueryBuilder('t')
+                ->select('DISTINCT t.category')
+                ->where('t.category IS NOT NULL AND t.category <> \'\'')
+                ->orderBy('t.category', 'ASC')
+                ->getQuery()
+                ->getArrayResult();
 
-        $typesRows = $typesQb->getArrayResult();
-        $types = [];
-        foreach ($typesRows as $row) {
-            $val = $row['category'] ?? null;
-            if ($val !== null && $val !== '') {
-                $types[] = $val;
+            $types = [];
+            foreach ($typesRows as $row) {
+                $val = $row['category'] ?? null;
+                if ($val !== null && $val !== '') $types[] = $val;
             }
-        }
 
-        // --- Өгөгдөл (шүүлттэй)
-        $qb = $repo->createQueryBuilder('t')
-            ->orderBy('t.date', 'ASC')
-            ->addOrderBy('t.id', 'ASC');
+            // --- Өгөгдөл (шүүлттэй)
+            $qb = $repo->createQueryBuilder('t')
+                ->orderBy('t.date', 'ASC')
+                ->addOrderBy('t.id', 'ASC');
 
-        if ($fromStr !== '') {
-            try {
+            if ($fromStr !== '') {
                 $from = new \DateTimeImmutable($fromStr.' 00:00:00');
                 $qb->andWhere('t.date >= :from')->setParameter('from', $from);
-            } catch (\Throwable $e) {}
-        }
-        if ($toStr !== '') {
-            try {
+            }
+            if ($toStr !== '') {
                 $to = new \DateTimeImmutable($toStr.' 23:59:59');
                 $qb->andWhere('t.date <= :to')->setParameter('to', $to);
-            } catch (\Throwable $e) {}
-        }
-        if ($type !== '') {
-            $qb->andWhere('t.category = :cat')->setParameter('cat', $type);
-        }
-        if ($dir === 'in') {
-            $qb->andWhere('t.isIncome = true');
-        } elseif ($dir === 'out') {
-            $qb->andWhere('t.isIncome = false');
-        }
+            }
+            if ($type !== '') {
+                $qb->andWhere('t.category = :cat')->setParameter('cat', $type);
+            }
+            if ($dir === 'in') {
+                $qb->andWhere('t.isIncome = true');
+            } elseif ($dir === 'out') {
+                $qb->andWhere('t.isIncome = false');
+            }
 
-        $filtered = $qb->getQuery()->getResult();
+            /** @var Transaction[] $filtered */
+            $filtered = $qb->getQuery()->getResult();
 
-        // --- Нийт дүн (getIsIncome() ашиглана)
-        $income = 0.0; 
-        $expense = 0.0;
-        foreach ($filtered as $t) {
-            /** @var Transaction $t */
-            $amt = (float) $t->getAmount();                 // amount нь string байж магадгүй
-            // Танай entity-д getter нь ихэвчлэн getIsIncome() байдаг. Хэрэв isIncome() бол дараах мөрийг солиорой.
-            $isIncome = (bool) ($t->getIsIncome() ?? false);
-            if ($isIncome) $income += abs($amt);
-            else           $expense += abs($amt);
+            // --- Нийт дүн (getter-ийг динамикаар шалгана)
+            $income = 0.0;
+            $expense = 0.0;
+            foreach ($filtered as $t) {
+                $amt = (float) $t->getAmount();
+
+                $isIncome =
+                    method_exists($t, 'getIsIncome') ? (bool)$t->getIsIncome()
+                  : (method_exists($t, 'isIncome')   ? (bool)$t->isIncome()
+                  : false);
+
+                if ($isIncome) $income += abs($amt);
+                else           $expense += abs($amt);
+            }
+            $balance = $opening + ($income - $expense);
+
+            // --- Сүүлийн 10 мөр (ASC-аас сүүлийн 10-ыг авна)
+            $latest = array_slice($filtered, max(0, count($filtered) - 10));
+
+            return $this->render('report/summary.html.twig', [
+                'income'         => $income,
+                'expense'        => $expense,
+                'balance'        => $balance,
+                'latest'         => $latest,
+                'openingBalance' => $opening,
+                'filters'        => [
+                    'from' => $fromStr,
+                    'to'   => $toStr,
+                    'type' => $type,
+                    'dir'  => $dir,
+                ],
+                'types'          => $types,
+                'totalCount'     => count($filtered),
+            ]);
+        } catch (\Throwable $e) {
+            // Түр debug: 500-ийн яг шалтгааныг дэлгэцэнд бичнэ (prod дээр ч)
+            return new Response(
+                'DEBUG /report ERROR: '.$e->getMessage().' ['.$e->getFile().':'.$e->getLine().']',
+                500,
+                ['Content-Type' => 'text/plain; charset=utf-8']
+            );
         }
-        $balance = $opening + ($income - $expense);
-
-        // --- Сүүлийн 10 мөр (ASC-аас сүүлийн 10-ыг авна)
-        $latest = array_slice($filtered, max(0, count($filtered) - 10));
-
-        return $this->render('report/summary.html.twig', [
-            'income'         => $income,
-            'expense'        => $expense,
-            'balance'        => $balance,
-            'latest'         => $latest,
-            'openingBalance' => $opening,
-            'filters'        => [
-                'from' => $fromStr,
-                'to'   => $toStr,
-                'type' => $type,
-                'dir'  => $dir,
-            ],
-            'types'          => $types,
-            'totalCount'     => count($filtered),
-        ]);
     }
 }
