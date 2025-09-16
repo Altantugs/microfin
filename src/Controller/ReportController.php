@@ -12,21 +12,28 @@ use Symfony\Component\HttpFoundation\File\Exception\FileException;
 class ReportController extends AbstractController
 {
     #[Route('/upload', name: 'upload_excel')]
-    public function upload(Request $request, ExcelImportService $excelImportService): Response
-    {
-        if ($request->isMethod('POST')) {
-            $file = $request->files->get('excel_file');
+public function upload(Request $request, ExcelImportService $excelImportService): Response
+{
+    if ($request->isMethod('POST')) {
+        $file = $request->files->get('excel_file');
 
-            if ($file) {
-                try {
-                    $excelImportService->import($file->getPathname());
-                    $this->addFlash('success', 'Excel амжилттай импортлогдлоо!');
-                } catch (\Exception $e) {
-                    $this->addFlash('error', 'Алдаа гарлаа: '.$e->getMessage());
-                }
-            }
+        if (!$file) {
+            $this->addFlash('error', 'Файл сонгогдоогүй.');
+            return $this->redirectToRoute('upload_excel');
         }
 
-        return $this->render('report/upload.html.twig');
+        try {
+            // Импортын сервисээ мөрийн тоо буцаадаг болгодог (доорх 3-р алхам)
+            $count = $excelImportService->import($file->getPathname());
+            $this->addFlash('success', sprintf('Excel амжилттай импортлогдлоо! (%d мөр)', $count));
+        } catch (\Throwable $e) {
+            $this->addFlash('error', 'Алдаа: '.$e->getMessage());
+        }
+
+        // PRG (Post/Redirect/Get)
+        return $this->redirectToRoute('upload_excel');
     }
+
+    return $this->render('report/upload.html.twig');
 }
+

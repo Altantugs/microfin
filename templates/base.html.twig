@@ -5,6 +5,16 @@
         <title>{% block title %}Welcome!{% endblock %}</title>
     </head>
     <body>
+      {# Flash messages #}
+  {% for label, messages in app.flashes %}
+    <div class="flash {{ label }}" style="padding:10px;margin:10px 0;border:1px solid #ddd;">
+      {% for message in messages %}
+        <div>{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endfor %}
+
+  {% block body %}{% endblock %}
         <p><a href="/healthz">Health</a></p>
         <p><a href="{{ path('upload_excel') }}">Upload Excel</a></p>
 

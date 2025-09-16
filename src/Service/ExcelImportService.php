@@ -91,5 +91,6 @@ class ExcelImportService
 
         $this->em->flush();
         return $count;
+        return $importedRowCount;
     }
 }
