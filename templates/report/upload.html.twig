@@ -1,13 +1,17 @@
 {% extends 'base.html.twig' %}
 {% block title %}Excel Upload{% endblock %}
+
 {% block body %}
   <h1>📊 Банкны хуулга Excel upload</h1>
-  {% if message %}<p><strong>{{ message }}</strong></p>{% endif %}
+
+  {% for label, messages in app.flashes %}
+    {% for msg in messages %}
+      <div class="flash-{{ label }}">{{ msg }}</div>
+    {% endfor %}
+  {% endfor %}
+
   <form method="post" enctype="multipart/form-data">
-    <input type="file" name="excel" accept=".xlsx,.xls,.csv" required>
+    <input type="file" name="excel_file" accept=".xlsx,.xls,.csv" required>
     <button type="submit">Upload</button>
   </form>
 {% endblock %}
-
-
-

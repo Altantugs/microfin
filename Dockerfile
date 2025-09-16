@@ -23,6 +23,9 @@ COPY . .
 # Дараа нь scripts ажиллуул
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
+# Upload хэмжээ
+RUN printf "upload_max_filesize=10M\npost_max_size=10M\n" > /usr/local/etc/php/conf.d/uploads.ini
+
 
 # PROD горим.
 ENV APP_ENV=prod
