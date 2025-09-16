@@ -1,7 +1,7 @@
-# PHP 8.3 болгоно (zipstream-php шаардлага)
+# PHP 8.3 (zipstream-php шаардлага)
 FROM php:8.3-cli
 
-# Системийн багцууд + PHP өргөтгөлүүд
+# Системийн багцууд + PHP өргөтгөлүүд (PhpSpreadsheet-д GD хэрэгтэй)
 RUN apt-get update && apt-get install -y \
     git unzip libpq-dev libicu-dev libzip-dev zip \
     libpng-dev libjpeg62-turbo-dev libfreetype6-dev \
@@ -10,26 +10,24 @@ RUN apt-get update && apt-get install -y \
 
 # Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+ENV COMPOSER_ALLOW_SUPERUSER=1
 
 # Ажиллах хавтас
 WORKDIR /app
 
-# Build кэшийг ашиглахын тулд эхлээд зөвхөн composer файлууд
+# 1) Кэшэнд ээлтэй алхам: зөвхөн composer файлуудыг эхлээд хуулж install (NO SCRIPTS)
 COPY composer.json composer.lock* symfony.lock* ./
-
-# post-install скриптүүдээс болж тасрахгүйн тулд --no-scripts
 RUN composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction --no-scripts
 
-# Кодыг дараа нь хуулна
+# 2) Бүх кодоо хуулна
 COPY . .
 
-# Autoload-оо production горимоор сайжруулна
-RUN composer dump-autoload --no-dev --optimize
+# 3) Одоо scripts-тайгаар дахин install → autoload_runtime.php үүснэ
+RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-# Runtime env
+# Prod env
 ENV APP_ENV=prod
 ENV APP_DEBUG=0
 
-# Render 8000 порт руу чиглүүлдэг
 EXPOSE 8000
 CMD ["php", "-S", "0.0.0.0:8000", "-t", "public"]
