@@ -2,8 +2,9 @@
 
 namespace App\Controller;
 
+use App\Entity\Transaction;
 use App\Service\ExcelImportService;
-use App\Repository\TransactionRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -23,14 +24,13 @@ class ReportController extends AbstractController
             }
 
             try {
-                // Импортын сервис мөрийн тоо буцаана
                 $count = $excelImportService->import($file->getPathname());
                 $this->addFlash('success', sprintf('Excel амжилттай импортлогдлоо! (%d мөр)', $count));
             } catch (\Throwable $e) {
                 $this->addFlash('error', 'Алдаа: '.$e->getMessage());
             }
 
-            // PRG (Post/Redirect/Get)
+            // PRG
             return $this->redirectToRoute('upload_excel');
         }
 
@@ -38,8 +38,10 @@ class ReportController extends AbstractController
     }
 
     #[Route('/report', name: 'report_summary')]
-    public function summary(TransactionRepository $repo): Response
+    public function summary(EntityManagerInterface $em): Response
     {
+        $repo = $em->getRepository(Transaction::class);
+
         // Нийт орлого, зарлага, тоо ширхэг
         $qb = $repo->createQueryBuilder('t');
         $qb->select(
@@ -51,7 +53,7 @@ class ReportController extends AbstractController
 
         $income  = (float) ($row['income'] ?? 0);
         $expense = (float) ($row['expense'] ?? 0);
-        // Зарлагын дүн маань сөрөг байж болох тул үлдэгдэл = орлого + зарлага
+        // Зарлага сөрөг байж болно → үлдэгдэл = орлого + зарлага
         $balance = $income + $expense;
 
         // Сүүлийн 10 гүйлгээ
