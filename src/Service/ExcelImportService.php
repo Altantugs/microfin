@@ -11,16 +11,9 @@ class ExcelImportService
     public function __construct(private EntityManagerInterface $em) {}
 
     /**
-     * Дараах толгойнуудыг танина:
-     * 1) Хуучин загвар:
-     *    Огноо | Тайлбар | Дүн | Чиглэл | Ангилал | Валют
-     * 2) Банкны хуулга загвар:
-     *    Огноо | Гүйлгээний утга | Дүн | Орлого | Зарлага | Үлдэгдэл | Төрөл
-     *
-     * Тайлбар:
-     *  - "Дүн" (signed) ирвэл тэмдэгтэй дүнд ДАВУУ ЭРХ өгнө.
-     *  - "Орлого"/"Зарлага" ирвэл тэдгээрээс чиглэл+дүнг тогтооно (хоёул бөглөгдвөл нетээр).
-     *  - "Чиглэл" (IN/OUT) ирвэл хуучин загварт хэрэглэнэ.
+     * Дэмжих толгойнууд:
+     * 1) Хуучин: Огноо | Тайлбар | Дүн | Чиглэл | Ангилал | Валют
+     * 2) Банкны хуулга: Огноо | Гүйлгээний утга | Дүн | Орлого | Зарлага | Үлдэгдэл | Төрөл
      */
     public function import(string $filepath): int
     {
@@ -34,34 +27,37 @@ class ExcelImportService
         $map = [];
         foreach ($rows[1] as $k => $v) {
             if ($v === null) continue;
-            $h = mb_strtolower(trim((string)$v));
+            $h = $this->normHeader((string)$v);
 
-            // Монгол үсгийн normalize
-            $h = str_replace(['ё','ө','ү'], ['е','o','u'], $h);
-
-            // Ерөнхий талбарууд
+            // Ерөнхий
             if (in_array($h, ['date','огноо'])) $map['date'] = $k;
 
+            // Тайлбар / Гүйлгээний утга
             if (in_array($h, [
-                'description','гуилгээ','гүйлгээ','утга','гуилгээнии утга','гүйлгээний утга','тайлбар'
-            ])) $map['desc'] = $k;
+                'description','тайлбар','гуилгээ','гүйлгээ','утга','гуилгээнии утга','гүйлгээний утга',
+                'transaction details','details','detail'
+            ])) { $map['desc'] = $k; }
 
+            // Дүн (signed)
             if (in_array($h, ['amount','дун','дvн','дүн'])) $map['amount'] = $k;
 
+            // Чиглэл (хуучин IN/OUT)
             if (in_array($h, ['direction','чиглэл'])) $map['dir'] = $k;
 
+            // Ангилал / Төрөл
             if (in_array($h, ['category','зориулалт','ангилал'])) $map['cat'] = $k;
+            if (in_array($h, ['turul','төрөл','type'])) $map['type'] = $k;
 
+            // Валют
             if (in_array($h, ['currency','валют'])) $map['cur'] = $k;
 
-            // Банкны хуулгын нэмэлтүүд
-            if (in_array($h, ['orlogo','орлого'])) $map['inc'] = $k;
-            if (in_array($h, ['zaralga','зарлага'])) $map['exp'] = $k;
-            if (in_array($h, ['uldegdel','үлдэгдэл','улдэгдэл'])) $map['bal'] = $k; // (одоохондоо хадгалахгүй)
-            if (in_array($h, ['turul','төрөл'])) $map['type'] = $k; // = category
+            // Банкны хуулга: Орлого / Зарлага / Үлдэгдэл
+            if (in_array($h, ['orlogo','орлого','income'])) $map['inc'] = $k;
+            if (in_array($h, ['zaralga','зарлага','expense'])) $map['exp'] = $k;
+            if (in_array($h, ['uldegdel','үлдэгдэл','улдэгдэл','balance'])) $map['bal'] = $k; // импортод заавал биш
         }
 
-        // Заавал байх: огноо + тайлбар + (дун эсвэл (орлого/зарлага))
+        // Заавал: огноо + тайлбар + (дүн эсвэл (орлого/зарлага))
         foreach (['date','desc'] as $req) {
             if (!isset($map[$req])) {
                 throw new \RuntimeException("Header '$req' not found");
@@ -112,8 +108,8 @@ class ExcelImportService
             $hasExp = isset($map['exp']) && trim((string)($r[$map['exp']] ?? '')) !== '';
 
             $signedVal = $hasSignedAmount ? $this->parseAmount((string)$r[$map['amount']]) : null;
-            $incVal    = $hasInc ? $this->parseAmount((string)$r[$map['inc']]) : 0.0; // Орлого (эерэг гэж үзнэ)
-            $expVal    = $hasExp ? $this->parseAmount((string)$r[$map['exp']]) : 0.0; // Зарлага (эерэг гэж үзнэ)
+            $incVal    = $hasInc ? $this->parseAmount((string)$r[$map['inc']]) : 0.0; // Орлого (эерэг)
+            $expVal    = $hasExp ? $this->parseAmount((string)$r[$map['exp']]) : 0.0; // Зарлага (эерэг)
 
             $amountFloat = 0.0;
             $isIncome = null;
@@ -133,17 +129,17 @@ class ExcelImportService
                     $isIncome = ($net >= 0);
                 }
 
-                // Хэрэв signed "Дүн" мөн ирсэн бол түүнд давуу эрх өгнө
+                // Хэрэв signed "Дүн" мөн ирсэн бол давуу эрх
                 if ($signedVal !== null && $signedVal != 0.0) {
-                    $amountFloat = (float)$signedVal; // тэмдэгтэй дүн
+                    $amountFloat = (float)$signedVal;
                     $isIncome = ($amountFloat >= 0);
                 }
             } else {
-                // Хуучин загвар: зөвхөн "Дүн" (+ магадгүй "Чиглэл")
+                // Хуучин загвар: зөвхөн "Дүн" (+магадгүй "Чиглэл")
                 $amountFloat = (float)$signedVal;
                 if (isset($map['dir'])) {
                     $dir = strtoupper(trim((string)($r[$map['dir']] ?? '')));
-                    $isIncome = in_array($dir, ['IN','ORLOGO','INCOME'], true);
+                    $isIncome = in_array($dir, ['IN','ORLOGO','INCOME','ОРЛОГО'], true);
                     if (!$isIncome && $amountFloat > 0) {
                         $amountFloat = -$amountFloat; // OUT → сөрөг
                     }
@@ -161,7 +157,7 @@ class ExcelImportService
             $t->setAmount($val);
             $t->setIsIncome((bool)$isIncome);
 
-            // Ангилал/Төрөл
+            // Ангилал / Төрөл
             if (isset($map['type'])) {
                 $t->setCategory((string)($r[$map['type']] ?? null));
             } elseif (isset($map['cat'])) {
@@ -181,45 +177,56 @@ class ExcelImportService
         return $count;
     }
 
+    /** Header-ийг normalize: lower, NBSP→space, олон space-ийг нэг, тусгай үсэг сольж, цэг таслалыг авч хаяна */
+    private function normHeader(string $h): string
+    {
+        $h = str_replace("\xC2\xA0", ' ', $h);        // NBSP → space
+        $h = preg_replace('/\s+/u', ' ', $h);         // олон space → 1
+        $h = trim($h);
+        $h = mb_strtolower($h);
+        // Монгол үсгийн normalize
+        $h = str_replace(['ё','ө','ү'], ['е','o','u'], $h);
+        // Таслал, цэг, двоеточие гэх мэт тэмдэгтийг авч, дахин trim
+        $h = preg_replace('/[,:;()\[\]{}]+/u', '', $h);
+        $h = trim($h);
+        return $h;
+    }
+
     /**
-     * Тоон утгыг уян хатан хөрвүүлнэ.
-     * Дэмжлэг:
-     *  - Энгийн: 1234, 1234.56
-     *  - АНУ: 1,234,567.89
-     *  - ЕХ: 1.234.567,89
-     *  - Зайтай: "1 500 000", NBSP "\xC2\xA0"
-     *  - Хаалт: "(15000)" → -15000
-     *  - Арын тэмдэг: "25000-" → -25000
-     *  - Валютын тэмдэг/текст: "₮1,500.25", "MNT 1,500.25" → 1500.25
+     * Тоон утгыг уян хатан хөрвүүлнэ:
+     * - 1234, 1234.56
+     * - 1,234,567.89 (US), 1.234.567,89 (EU)
+     * - "1 500 000", NBSP
+     * - "(15000)" → -15000, "25000-" → -25000
+     * - "₮1,500.25", "MNT 1,500.25" → 1500.25
      */
     private function parseAmount(string $s): float
     {
         $s = trim($s);
         if ($s === '') return 0.0;
 
-        // Валют/текстийн ерөнхий цэвэрлэгээ
-        // MNT, ₮, төгрөг гэх мэтийг авч хаяна (үсгийн хоорондох олон зайг нэг болгоно)
+        // Валют/текстийн цэвэрлэгээ
+        $s = str_replace("\xC2\xA0", ' ', $s);        // NBSP
         $s = preg_replace('/\s+/u', ' ', $s);
-        $s = str_replace(["\xC2\xA0"], ' ', $s); // NBSP → space
         $s = str_ireplace(['mnt', 'төгрөг', 'togrog', 'mnt.', 'mnt:'], '', $s);
         $s = str_replace(['₮', '¥', '$', '€'], '', $s);
         $s = trim($s);
 
-        // Хаалттай бол сөрөг гэж үзнэ: (1234.56)
+        // Хаалттай эсэх
         $negByParen = false;
         if (preg_match('/^\(\s*.+\s*\)$/', $s)) {
             $negByParen = true;
             $s = trim($s, " ()");
         }
 
-        // Арын минус: 25000-
+        // Арын минус
         $negByTrailing = false;
         if (preg_match('/^-?\s*[\d.,\s]+\s-\s*$/', $s) || str_ends_with($s, '-')) {
             $negByTrailing = true;
             $s = rtrim($s, "- \t\n\r\0\x0B");
         }
 
-        // Хэрэв шууд стандарт хэлбэр бол
+        // Шууд стандарт хэлбэр
         if (preg_match('/^\s*[+-]?\d+(?:\.\d+)?\s*$/', $s)) {
             $val = (float)$s;
             if ($negByParen || $negByTrailing) $val = -abs($val);
@@ -230,7 +237,7 @@ class ExcelImportService
         $hasDot   = str_contains($s, '.');
 
         if ($hasComma && $hasDot) {
-            // Сүүлийн тэмдэгийг аравтын гэж үзэх
+            // Сүүлийн тусгаарлагчыг аравтын гэж үзэх
             $lastComma = strrpos($s, ',');
             $lastDot   = strrpos($s, '.');
             if ($lastComma !== false && $lastDot !== false) {
@@ -245,15 +252,13 @@ class ExcelImportService
             }
         } elseif ($hasComma) {
             if (substr_count($s, ',') > 1) {
-                // олон comma → мянгтын
-                $s = str_replace(',', '', $s);
+                $s = str_replace(',', '', $s); // олон comma → мянгтын
             } else {
-                // нэг comma: баруун тал 3 оронтой бол мянгтын, бусад тохиолдолд аравтын
                 [$left, $right] = array_pad(explode(',', $s, 2), 2, '');
                 if (preg_match('/^\d{3}$/', $right)) {
-                    $s = $left . $right;
+                    $s = $left . $right; // 1,234 → 1234
                 } else {
-                    $s = $left . '.' . $right;
+                    $s = $left . '.' . $right; // 12,34 → 12.34
                 }
             }
         } elseif ($hasDot) {
@@ -267,7 +272,6 @@ class ExcelImportService
             $s = str_replace(' ', '', $s);
         }
 
-        // Эцсийн хөрвүүлэлт
         $val = (float)$s;
         if ($negByParen || $negByTrailing) $val = -abs($val);
         return $val;
