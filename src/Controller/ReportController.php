@@ -63,11 +63,9 @@ class ReportController extends AbstractController
             ->orderBy('t.category', 'ASC')
             ->getQuery();
 
-        // Doctrine 2/3 аль ч хувилбарт ажиллах бат бөх аргаар массив гаргана
         $typesRows = $typesQb->getArrayResult();
         $types = [];
         foreach ($typesRows as $row) {
-            // $row = ['category' => '...'] гэх хэлбэртэй
             $val = $row['category'] ?? null;
             if ($val !== null && $val !== '') {
                 $types[] = $val;
@@ -102,13 +100,16 @@ class ReportController extends AbstractController
 
         $filtered = $qb->getQuery()->getResult();
 
-        // --- Нийт дүн
-        $income = 0.0; $expense = 0.0;
+        // --- Нийт дүн (getIsIncome() ашиглана)
+        $income = 0.0; 
+        $expense = 0.0;
         foreach ($filtered as $t) {
             /** @var Transaction $t */
-            $amt = (float) $t->getAmount(); // amount нь string байж болох тул float болгож байна
-            if ($t->isIsIncome()) $income += abs($amt);
-            else                  $expense += abs($amt);
+            $amt = (float) $t->getAmount();                 // amount нь string байж магадгүй
+            // Танай entity-д getter нь ихэвчлэн getIsIncome() байдаг. Хэрэв isIncome() бол дараах мөрийг солиорой.
+            $isIncome = (bool) ($t->getIsIncome() ?? false);
+            if ($isIncome) $income += abs($amt);
+            else           $expense += abs($amt);
         }
         $balance = $opening + ($income - $expense);
 
