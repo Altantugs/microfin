@@ -73,14 +73,15 @@
       {% set running = openingBalance|default(0) %}
       {% if latest is defined and latest is not empty %}
         {% for t in latest %}
-          {% set amt = t.amount|float %}
+          {# |float байхгүй тул тоо руу хүчээр кастлах: + 0 #}
+          {% set amt = t.amount + 0 %}
           {% set running = running + amt %}
           <tr>
             <td>{{ t.date ? t.date|date('Y-m-d') : '' }}</td>
             <td>{{ t.description }}</td>
             <td style="text-align:right">{{ amt|number_format(2, '.', ',') }}</td>
-            <td style="text-align:right">{{ t.isIncome ? amt|number_format(2, '.', ',') : '' }}</td>
-            <td style="text-align:right">{{ not t.isIncome ? (amt * -1)|number_format(2, '.', ',') : '' }}</td>
+            <td style="text-align:right">{{ (t.isIncome ?? (t.getIsIncome is defined and t.getIsIncome ? t.getIsIncome : false)) ? amt|number_format(2, '.', ',') : '' }}</td>
+            <td style="text-align:right">{{ (t.isIncome ?? (t.getIsIncome is defined and t.getIsIncome ? t.getIsIncome : false)) ? '' : (amt * -1)|number_format(2, '.', ',') }}</td>
             <td style="text-align:right">{{ running|number_format(2, '.', ',') }}</td>
             <td>{{ t.category ?: '-' }}</td>
           </tr>
