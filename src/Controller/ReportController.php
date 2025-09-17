@@ -21,10 +21,19 @@ class ReportController extends AbstractController
     ): Response
     {
         if ($request->isMethod('POST')) {
+            // Хэрэв "clear" сонгосон бол бүх бичлэгийг цэвэрлэнэ
             if ($request->request->get('clear')) {
                 $em->createQuery('DELETE FROM App\Entity\Transaction t')->execute();
             }
 
+            // --- ШИНЭ: origin (КАСС/BANK) авах
+            $origin = strtoupper(trim((string)$request->request->get('origin', '')));
+            if (!in_array($origin, ['CASH', 'BANK'], true)) {
+                $this->addFlash('error', 'Төрөл сонгоно уу: КАСС эсвэл ХАРИЛЦАХ ДАНСЫН ХУУЛГА.');
+                return $this->redirectToRoute('upload_excel');
+            }
+
+            // Файл шалгах
             $file = $request->files->get('excel');
             if (!$file) {
                 $this->addFlash('error', 'Файл сонгогдоогүй.');
@@ -32,10 +41,16 @@ class ReportController extends AbstractController
             }
 
             try {
-                $count = $excelImportService->import($file->getPathname());
-                $this->addFlash('success', sprintf('Excel амжилттай импортлогдлоо! (%d мөр)', $count));
+                // --- ШИНЭ: import-д origin дамжуулна (ДАРААГИЙН АЛХАМД сервисийг өөрчилнө)
+                $count = $excelImportService->import($file->getPathname(), $origin);
+
+                $this->addFlash('success', sprintf(
+                    'Excel амжилттай импортлогдлоо! (%d мөр) • Төрөл: %s',
+                    $count,
+                    $origin === 'CASH' ? 'КАСС' : 'ХАРИЛЦАХ'
+                ));
             } catch (\Throwable $e) {
-                $this->addFlash('error', 'Алдаа: '.$e->getMessage());
+                $this->addFlash('error', 'Алдаа: ' . $e->getMessage());
             }
 
             return $this->redirectToRoute('upload_excel');
@@ -96,7 +111,7 @@ class ReportController extends AbstractController
             /** @var Transaction[] $filtered */
             $filtered = $qb->getQuery()->getResult();
 
-            // --- Нийт дүн (getter-ийг динамикаар шалгана)
+            // --- Нийт дүн
             $income = 0.0;
             $expense = 0.0;
             foreach ($filtered as $t) {
@@ -112,7 +127,7 @@ class ReportController extends AbstractController
             }
             $balance = $opening + ($income - $expense);
 
-            // --- Сүүлийн 10 мөр (ASC-аас сүүлийн 10-ыг авна)
+            // --- Сүүлийн 10 мөр
             $latest = array_slice($filtered, max(0, count($filtered) - 10));
 
             return $this->render('report/summary.html.twig', [
@@ -131,7 +146,7 @@ class ReportController extends AbstractController
                 'totalCount'     => count($filtered),
             ]);
         } catch (\Throwable $e) {
-            // Түр debug: 500-ийн яг шалтгааныг дэлгэцэнд бичнэ (prod дээр ч)
+            // Түр debug: 500-ийн яг шалтгааныг дэлгэцэнд бичнэ
             return new Response(
                 'DEBUG /report ERROR: '.$e->getMessage().' ['.$e->getFile().':'.$e->getLine().']',
                 500,
