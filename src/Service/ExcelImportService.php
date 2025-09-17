@@ -10,10 +10,18 @@ class ExcelImportService
 {
     public function __construct(private EntityManagerInterface $em) {}
 
-    // BEFORE: public function import(string $filepath): int
-    // AFTER:  origin (CASH|BANK) дамжуулдаг болгов
+    /**
+     * @param string $filepath  Upload хийсэн Excel-ийн зам
+     * @param string $origin    'CASH' | 'BANK'
+     */
     public function import(string $filepath, string $origin): int
     {
+        // --- Origin normalize (Controller дээр шалгасан ч дахин баталгаажуулъя)
+        $originNorm = strtoupper(trim($origin));
+        if (!in_array($originNorm, ['CASH', 'BANK'], true)) {
+            throw new \InvalidArgumentException("Invalid origin: must be CASH or BANK");
+        }
+
         // 0) Workbook ачаалж, BankStatement sheet-г илүүд үзнэ
         $spreadsheet = IOFactory::load($filepath);
         $sheet = $spreadsheet->getSheetByName('BankStatement') ?? $spreadsheet->getActiveSheet();
@@ -30,10 +38,8 @@ class ExcelImportService
             if ($v === null) continue;
             $h = $this->normHeader((string)$v);
 
-            // Ерөнхий
             if (in_array($h, ['date','огноо'])) $map['date'] = $k;
 
-            // Тайлбар / Гүйлгээний утга (олон alias)
             if (in_array($h, [
                 'description','тайлбар','гуилгээ','гүйлгээ','утга',
                 'гуилгээнии утга','гүйлгээний утга','гуйлгээний утга','гуйлгээнии утга',
@@ -41,26 +47,20 @@ class ExcelImportService
                 'гүйлгээнийутга','гуйлгээнийутга'
             ])) { $map['desc'] = $k; }
 
-            // Дүн (signed)
             if (in_array($h, ['amount','дун','дvн','дүн'])) $map['amount'] = $k;
 
-            // Чиглэл (хуучин IN/OUT)
             if (in_array($h, ['direction','чиглэл'])) $map['dir'] = $k;
 
-            // Ангилал / Төрөл
             if (in_array($h, ['category','зориулалт','ангилал'])) $map['cat'] = $k;
             if (in_array($h, ['turul','төрөл','type'])) $map['type'] = $k;
 
-            // Валют
             if (in_array($h, ['currency','валют'])) $map['cur'] = $k;
 
-            // Банкны хуулга: Орлого / Зарлага / Үлдэгдэл
             if (in_array($h, ['orlogo','орлого','income'])) $map['inc'] = $k;
             if (in_array($h, ['zaralga','зарлага','expense'])) $map['exp'] = $k;
             if (in_array($h, ['uldegdel','үлдэгдэл','улдэгдэл','balance'])) $map['bal'] = $k; // optional
         }
 
-        // 1.1) desc олдохгүй байвал илэрсэн толгойнуудыг харуулж алдаа өг
         if (!isset($map['desc'])) {
             $detected = [];
             foreach ($rawHeaders as $k => $v) {
@@ -71,7 +71,6 @@ class ExcelImportService
             );
         }
 
-        // Заавал: огноо + (дүн эсвэл (орлого/зарлага))
         if (!isset($map['date'])) {
             throw new \RuntimeException("Header 'date' not found");
         }
@@ -104,11 +103,8 @@ class ExcelImportService
             }
 
             $t = new Transaction();
-
-            // NEW: upload-ийн төрлийг хадгалах (entity-д setter байвал)
-            if (method_exists($t, 'setOrigin')) {
-                $t->setOrigin($origin); // 'CASH' эсвэл 'BANK'
-            }
+            // --- ШИНЭ: origin-ийг заавал онооно
+            $t->setOrigin($originNorm);
 
             if (is_numeric($rawDate)) {
                 $dt = ExcelDate::excelToDateTimeObject((float)$rawDate);
@@ -193,14 +189,13 @@ class ExcelImportService
     // Header normalize — ө/ү-г БҮҮ соль (зөвхөн ё→е)
     private function normHeader(string $h): string
     {
-        $h = str_replace("\xC2\xA0", ' ', $h);        // NBSP → space
-        $h = preg_replace('/\s+/u', ' ', $h);         // олон space → 1
+        $h = str_replace("\xC2\xA0", ' ', $h);
+        $h = preg_replace('/\s+/u', ' ', $h);
         $h = trim($h);
         $h = mb_strtolower($h);
-        $h = str_replace(['ё'], ['е'], $h);           // зөвхөн ё→е
-        $h = preg_replace('/[,:;()\[\]{}]+/u', '', $h);     // илүү тэмдэгтүүд
-        $h = trim($h);
-        return $h;
+        $h = str_replace(['ё'], ['е'], $h);
+        $h = preg_replace('/[,:;()\[\]{}]+/u', '', $h);
+        return trim($h);
     }
 
     // Amount parse
@@ -239,8 +234,9 @@ class ExcelImportService
                 else { $s = str_replace(',', '', $s); }
             }
         } elseif ($hasComma) {
-            if (substr_count($s, ',') > 1) { $s = str_replace(',', '', $s); }
-            else {
+            if (substr_count($s, ',') > 1) {
+                $s = str_replace(',', '', $s);
+            } else {
                 [$left, $right] = array_pad(explode(',', $s, 2), 2, '');
                 if (preg_match('/^\d{3}$/', $right)) { $s = $left . $right; }
                 else { $s = $left . '.' . $right; }
