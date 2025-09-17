@@ -21,19 +21,22 @@ class ReportController extends AbstractController
     ): Response
     {
         if ($request->isMethod('POST')) {
-            // Хэрэв "clear" сонгосон бол бүх бичлэгийг цэвэрлэнэ
+            // 1) Хэрэв "clear" сонгосон бол бүх бичлэгийг цэвэрлэнэ
             if ($request->request->get('clear')) {
                 $em->createQuery('DELETE FROM App\Entity\Transaction t')->execute();
             }
 
-            // --- origin (КАСС/BANK) авах
+            // 2) DB-д origin багана заавал байлгах (prod/Postgres дээр ч алдаа гаргахгүй)
+            $this->ensureOriginColumn($em);
+
+            // 3) Upload төрлийг авах (КАСС / ХАРИЛЦАХ)
             $origin = strtoupper(trim((string)$request->request->get('origin', '')));
             if (!in_array($origin, ['CASH', 'BANK'], true)) {
                 $this->addFlash('error', 'Төрөл сонгоно уу: КАСС эсвэл ХАРИЛЦАХ ДАНСЫН ХУУЛГА.');
                 return $this->redirectToRoute('upload_excel');
             }
 
-            // Файл шалгах
+            // 4) Файл шалгах
             $file = $request->files->get('excel');
             if (!$file) {
                 $this->addFlash('error', 'Файл сонгогдоогүй.');
@@ -41,7 +44,7 @@ class ReportController extends AbstractController
             }
 
             try {
-                // import-д origin дамжуулна
+                // 5) Импорт (origin дамжуулна)
                 $count = $excelImportService->import($file->getPathname(), $origin);
 
                 $this->addFlash('success', sprintf(
@@ -146,7 +149,7 @@ class ReportController extends AbstractController
                     'to'     => $toStr,
                     'type'   => $type,
                     'dir'    => $dir,
-                    'origin' => $originQ, // ШИНЭ: template-д selected байлгахын тулд
+                    'origin' => $originQ, // template-д selected байлгахын тулд
                 ],
                 'types'          => $types,
                 'totalCount'     => count($filtered),
@@ -158,6 +161,32 @@ class ReportController extends AbstractController
                 500,
                 ['Content-Type' => 'text/plain; charset=utf-8']
             );
+        }
+    }
+
+    /**
+     * Prod/Postgres болон локал/SQLite аль алинд нь 'origin' багана
+     * байхгүй бол үүсгэж баталгаажуулна.
+     */
+    private function ensureOriginColumn(EntityManagerInterface $em): void
+    {
+        $conn = $em->getConnection();
+        $driver = $conn->getDriver()->getName(); // pdo_pgsql, pdo_sqlite, ...
+
+        if (str_contains($driver, 'pgsql')) {
+            // Postgres — IF NOT EXISTS дэмждэг
+            $conn->executeStatement('ALTER TABLE "transaction" ADD COLUMN IF NOT EXISTS origin VARCHAR(16) NULL');
+        } else {
+            // SQLite — IF NOT EXISTS байхгүй тул introspect хийж шалгана
+            $sm = $conn->createSchemaManager();
+            $table = $sm->introspectTable('transaction');
+            $has = false;
+            foreach ($table->getColumns() as $col) {
+                if (strcasecmp($col->getName(), 'origin') === 0) { $has = true; break; }
+            }
+            if (!$has) {
+                $conn->executeStatement('ALTER TABLE "transaction" ADD COLUMN origin VARCHAR(16) NULL');
+            }
         }
     }
 }
