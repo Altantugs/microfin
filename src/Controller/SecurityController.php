@@ -4,17 +4,23 @@ namespace App\Controller;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 
 final class SecurityController extends AbstractController
 {
-    // /login нэртэй ROUTE (name="login") — Security формын redirect-ыг барина
-    #[Route('/login', name: 'login', methods: ['GET'])]
-    public function login(): Response
+    #[Route('/login', name: 'login', methods: ['GET','POST'])]
+    public function login(AuthenticationUtils $authenticationUtils): Response
     {
-        return new Response('<h1>Login</h1><p>Түр placeholder. Дараагийн алхмаар жинхэнэ форм нэмнэ.</p>', 200);
+        // Алдаа ба сүүлийн оруулсан имэйл
+        $error = $authenticationUtils->getLastAuthenticationError();
+        $lastUsername = $authenticationUtils->getLastUsername();
+
+        return $this->render('security/login.html.twig', [
+            'last_username' => $lastUsername,
+            'error' => $error,
+        ]);
     }
 
-    // /logout — Symfony өөрөө интерсептэлдэг, энд логик бичих шаардлагагүй
     #[Route('/logout', name: 'logout', methods: ['GET'])]
     public function logout(): void
     {
