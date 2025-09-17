@@ -14,7 +14,8 @@ services:
     buildCommand: |
       composer install --no-dev --optimize-autoloader
 
-    startCommand: php -S 0.0.0.0:$PORT -t public
+    # Router script-ийг зааж өгсөн зөв хувилбар
+    startCommand: php -S 0.0.0.0:$PORT public/index.php
 
     postdeployCommand: php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
 
@@ -26,6 +27,4 @@ services:
       - key: OPENING_BALANCE
         value: "0"
       - key: DATABASE_URL
-        fromDatabase:
-          name: mini-finance-db
-          property: connectionString
+        fromDatabas
