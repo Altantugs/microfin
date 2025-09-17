@@ -4,29 +4,36 @@ namespace App\Controller;
 
 use App\Service\ExcelImportService;
 use App\Repository\TransactionRepository;
-use App\Entity\Transaction;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Routing\Attribute\Route;
 
-class ReportController extends AbstractController
+final class ReportController extends AbstractController
 {
-    #[Route('/upload', name: 'upload_excel')]
+    #[Route('/upload', name: 'upload_excel', methods: ['GET','POST'])]
     public function upload(
         Request $request,
         ExcelImportService $excelImportService,
         EntityManagerInterface $em
-    ): Response
-    {
+    ): Response {
+        // Хамгаалалт — заавал нэвтэрсэн байх
+        $user = $this->getUser();
+        if (!$user) {
+            return $this->redirectToRoute('login');
+        }
+
         if ($request->isMethod('POST')) {
-            // 1) Clear
+            // 1) Зөвхөн тухайн хэрэглэгчийн дата-г цэвэрлэх
             if ($request->request->get('clear')) {
-                $em->createQuery('DELETE FROM App\Entity\Transaction t')->execute();
+                $em->createQuery('DELETE FROM App\Entity\Transaction t WHERE t.user = :u')
+                   ->setParameter('u', $user)
+                   ->execute();
+                $this->addFlash('success', 'Таны бүх гүйлгээг цэвэрлэж устгалаа.');
             }
 
-            // 2) Баганууд баталгаажуулах (origin + customer)
+            // 2) Баганууд (origin, customer) байгаа эсэхийг баталгаажуулах
             try {
                 $this->ensureColumns($em);
             } catch (\Throwable $e) {
@@ -37,11 +44,11 @@ class ReportController extends AbstractController
             // 3) Upload төрлийг авах
             $origin = strtoupper(trim((string)$request->request->get('origin', '')));
             if (!in_array($origin, ['CASH', 'BANK'], true)) {
-                $this->addFlash('error', 'Төрөл сонгоно уу: КАСС эсвэл ХАРИЛЦАХ ДАНСЫН ХУУЛГА.');
+                $this->addFlash('error', 'Төрөл сонгоно уу: КАСС эсвэл ХАРИЛЦАХ ДАНСНЫ ХУУЛГА.');
                 return $this->redirectToRoute('upload_excel');
             }
 
-            // 4) Файл
+            // 4) Файл шалгах
             $file = $request->files->get('excel');
             if (!$file) {
                 $this->addFlash('error', 'Файл сонгогдоогүй.');
@@ -49,8 +56,14 @@ class ReportController extends AbstractController
             }
 
             try {
-                // 5) Импорт
+                // 5) Импорт — ExcelImportService нь таний user-г Transaction-д тохируулж хадгална
                 $count = $excelImportService->import($file->getPathname(), $origin);
+
+                // Fallback (хэрвээ хуучин мөрүүдэд user=null үлдвэл, бүгдийг таны user-р тэмдэглэнэ)
+                $em->getConnection()->executeStatement(
+                    'UPDATE "transaction" SET user_id = :uid WHERE user_id IS NULL',
+                    ['uid' => $user->getId()]
+                );
 
                 $this->addFlash('success', sprintf(
                     'Excel амжилттай импортлогдлоо! (%d мөр) • Төрөл: %s',
@@ -71,19 +84,24 @@ class ReportController extends AbstractController
     public function summary(Request $request, TransactionRepository $repo, EntityManagerInterface $em): Response
     {
         try {
-            // Баганууд (prod дээр ч) бий эсэхийг баталгаажуулъя
+            $user = $this->getUser();
+            if (!$user) {
+                return $this->redirectToRoute('login');
+            }
+
+            // prod дээр ч багана байна уу гэдгийг баталгаажуулъя
             $this->ensureColumns($em);
 
             // --- Шүүлтүүд
             $opening = $request->query->get('opening', $_ENV['OPENING_BALANCE'] ?? 0);
             $opening = is_numeric($opening) ? (float)$opening : 0.0;
 
-            $fromStr = trim((string) $request->query->get('from', ''));
-            $toStr   = trim((string) $request->query->get('to', ''));
-            $type    = trim((string) $request->query->get('type', ''));
-            $dir     = trim((string) $request->query->get('dir', ''));
-            $originQ = strtoupper(trim((string)$request->query->get('origin', '')));
-            $q       = trim((string)$request->query->get('q', ''));
+            $fromStr   = trim((string) $request->query->get('from', ''));
+            $toStr     = trim((string) $request->query->get('to', ''));
+            $type      = trim((string) $request->query->get('type', ''));
+            $dir       = trim((string) $request->query->get('dir', ''));
+            $originQ   = strtoupper(trim((string)$request->query->get('origin', '')));
+            $q         = trim((string)$request->query->get('q', ''));
             $customerQ = trim((string)$request->query->get('customer', ''));
 
             // --- Хуудаслалт
@@ -94,10 +112,12 @@ class ReportController extends AbstractController
             $page = (int) ($request->query->get('page', 1));
             if ($page < 1) $page = 1;
 
-            // --- Төрлийн жагсаалт
+            // --- Төрлийн жагсаалт (зөвхөн тухайн хэрэглэгчийн датагаас)
             $typesRows = $repo->createQueryBuilder('t')
                 ->select('DISTINCT t.category')
-                ->where('t.category IS NOT NULL AND t.category <> \'\'')
+                ->where('t.user = :u')
+                ->andWhere('t.category IS NOT NULL AND t.category <> \'\'')
+                ->setParameter('u', $user)
                 ->orderBy('t.category', 'ASC')
                 ->getQuery()->getArrayResult();
             $types = [];
@@ -106,10 +126,12 @@ class ReportController extends AbstractController
                 if ($val !== null && $val !== '') $types[] = $val;
             }
 
-            // --- Харилцагчийн жагсаалт (distinct)
+            // --- Харилцагчийн жагсаалт (distinct, зөвхөн тухайн хэрэглэгчийнх)
             $customersRows = $repo->createQueryBuilder('t2')
                 ->select('DISTINCT t2.customer')
-                ->where('t2.customer IS NOT NULL AND t2.customer <> \'\'')
+                ->where('t2.user = :u')
+                ->andWhere('t2.customer IS NOT NULL AND t2.customer <> \'\'')
+                ->setParameter('u', $user)
                 ->orderBy('t2.customer', 'ASC')
                 ->getQuery()->getArrayResult();
             $customers = [];
@@ -118,8 +140,9 @@ class ReportController extends AbstractController
                 if ($val !== null && $val !== '') $customers[] = $val;
             }
 
-            // --- Нийт шүүлттэй QB
+            // --- Нийт шүүлттэй QB (зөвхөн тухайн хэрэглэгчийн мөрүүд)
             $baseQb = $repo->createQueryBuilder('t')
+                ->andWhere('t.user = :u')->setParameter('u', $user)
                 ->orderBy('t.date', 'ASC')
                 ->addOrderBy('t.id', 'ASC');
 
@@ -166,7 +189,7 @@ class ReportController extends AbstractController
                 'SUM(CASE WHEN t.isIncome = false THEN ABS(t.amount) ELSE 0 END) AS expenseSum'
             );
             $sums = $sumQb->getQuery()->getSingleResult();
-            $income = (float)($sums['incomeSum'] ?? 0);
+            $income  = (float)($sums['incomeSum'] ?? 0);
             $expense = (float)($sums['expenseSum'] ?? 0);
             $balance = $opening + ($income - $expense);
 
@@ -222,12 +245,12 @@ class ReportController extends AbstractController
                 'openingBalance' => $opening,
                 'startBalance'   => $startBalance,
                 'filters'        => [
-                    'from'   => $fromStr,
-                    'to'     => $toStr,
-                    'type'   => $type,
-                    'dir'    => $dir,
-                    'origin' => $originQ,
-                    'q'      => $q,
+                    'from'     => $fromStr,
+                    'to'       => $toStr,
+                    'type'     => $type,
+                    'dir'      => $dir,
+                    'origin'   => $originQ,
+                    'q'        => $q,
                     'customer' => $customerQ,
                 ],
                 'types'          => $types,
@@ -267,7 +290,9 @@ class ReportController extends AbstractController
             $table = $sm->introspectTable('transaction');
 
             $cols = [];
-            foreach ($table->getColumns() as $col) $cols[strtolower($col->getName())] = true;
+            foreach ($table->getColumns() as $col) {
+                $cols[strtolower($col->getName())] = true;
+            }
 
             if (!isset($cols['origin'])) {
                 $conn->executeStatement('ALTER TABLE "transaction" ADD COLUMN origin VARCHAR(16) NULL');
@@ -276,10 +301,13 @@ class ReportController extends AbstractController
                 $conn->executeStatement('ALTER TABLE "transaction" ADD COLUMN customer VARCHAR(120) NULL');
             }
         } else {
-            // Бусад платформ – simple check
+            // Бусад платформ – энгийн шалгалт
             foreach (['origin' => 'VARCHAR(16)', 'customer' => 'VARCHAR(120)'] as $name => $type) {
-                try { $conn->executeStatement('SELECT '.$name.' FROM "transaction" WHERE 1=0'); }
-                catch (\Throwable $e) { $conn->executeStatement('ALTER TABLE "transaction" ADD COLUMN '.$name.' '.$type.' NULL'); }
+                try {
+                    $conn->executeStatement('SELECT '.$name.' FROM "transaction" WHERE 1=0');
+                } catch (\Throwable $e) {
+                    $conn->executeStatement('ALTER TABLE "transaction" ADD COLUMN '.$name.' '.$type.' NULL');
+                }
             }
         }
     }
