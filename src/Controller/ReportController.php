@@ -126,8 +126,9 @@ class ReportController extends AbstractController
                 $baseQb->andWhere('t.origin = :o')->setParameter('o', $originQ);
             }
 
-            // --- Нийт тоо
+            // --- Нийт тоо (COUNT query) — Postgres дээр ORDER BY-той COUNT хориглодог тул reset
             $countQb = clone $baseQb;
+            $countQb->resetDQLPart('orderBy');
             $totalCount = (int) $countQb->select('COUNT(t.id)')->getQuery()->getSingleScalarResult();
 
             $totalPages = (int) max(1, (int)ceil($totalCount / $perPage));
@@ -173,9 +174,9 @@ class ReportController extends AbstractController
                 'income'         => $income,
                 'expense'        => $expense,
                 'balance'        => $balance,
-                'rows'           => $rows,             // ← pagination-той мөрүүд
+                'rows'           => $rows,
                 'openingBalance' => $opening,
-                'startBalance'   => $startBalance,     // ← тухайн хуудсын running эхлэл
+                'startBalance'   => $startBalance,
                 'filters'        => [
                     'from'   => $fromStr,
                     'to'     => $toStr,
