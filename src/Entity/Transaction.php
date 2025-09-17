@@ -3,6 +3,7 @@ namespace App\Entity;
 
 use App\Repository\TransactionRepository;
 use Doctrine\ORM\Mapping as ORM;
+use App\Entity\User;
 
 #[ORM\Entity(repositoryClass: TransactionRepository::class)]
 class Transaction
@@ -36,6 +37,11 @@ class Transaction
     #[ORM\Column(type: "string", length: 120, nullable: true)]
     private ?string $customer = null;
 
+    // --- ШИНЭ: Хэрэглэгч холбоо ---
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true)]   // <-- Энд өөрчилсөн
+    private ?User $user = null;
+
     public function getId(): ?int { return $this->id; }
 
     public function getDate(): \DateTimeImmutable { return $this->date; }
@@ -63,7 +69,10 @@ class Transaction
         return $this;
     }
 
-    // --- ШИНЭ: customer getter/setter ---
     public function getCustomer(): ?string { return $this->customer; }
     public function setCustomer(?string $c): self { $this->customer = $c ?: null; return $this; }
+
+    // --- Getter/setter for User ---
+    public function getUser(): ?User { return $this->user; }
+    public function setUser(?User $user): self { $this->user = $user; return $this; }
 }
