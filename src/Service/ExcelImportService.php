@@ -2,13 +2,18 @@
 namespace App\Service;
 
 use App\Entity\Transaction;
+use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
+use Symfony\Bundle\SecurityBundle\Security;
 
 class ExcelImportService
 {
-    public function __construct(private EntityManagerInterface $em) {}
+    public function __construct(
+        private EntityManagerInterface $em,
+        private Security $security, // нэвтэрсэн хэрэглэгчийг авах
+    ) {}
 
     // origin (CASH|BANK) дамжуулдаг
     public function import(string $filepath, string $origin): int
@@ -101,6 +106,12 @@ class ExcelImportService
             // origin
             if (method_exists($t, 'setOrigin')) {
                 $t->setOrigin($origin); // 'CASH' / 'BANK'
+            }
+
+            // Нэвтэрсэн хэрэглэгчийг Transaction-д шивж өгөх
+            $user = $this->security->getUser();
+            if ($user instanceof User) {
+                $t->setUser($user);
             }
 
             if (is_numeric($rawDate)) {
