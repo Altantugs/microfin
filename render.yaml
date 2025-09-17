@@ -16,7 +16,6 @@ services:
 
     startCommand: php -S 0.0.0.0:$PORT -t public
 
-    # Deploy бүрийн дараа DB-ээ entity-тэй нь sync хийх (миграцигаар)
     postdeployCommand: php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
 
     envVars:
@@ -26,7 +25,6 @@ services:
         value: "0"
       - key: OPENING_BALANCE
         value: "0"
-      # Postgres-ийн URL-ийг Render-ийн DB-ээс автоматаар авч DATABASE_URL-д онооно
       - key: DATABASE_URL
         fromDatabase:
           name: mini-finance-db
