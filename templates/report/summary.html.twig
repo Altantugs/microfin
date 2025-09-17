@@ -38,6 +38,17 @@
         <option value="out" {{ filters.dir|default('') == 'out' ? 'selected' : '' }}>Зарлага</option>
       </select>
     </div>
+
+    {# --- ШИНЭ: Маягтын төрөл (origin) шүүлтүүр --- #}
+    <div>
+      <label>Маягтын төрөл</label><br>
+      <select name="origin">
+        <option value="">— Бүгд —</option>
+        <option value="CASH" {{ (filters.origin|default('')) == 'CASH' ? 'selected' : '' }}>КАСС</option>
+        <option value="BANK" {{ (filters.origin|default('')) == 'BANK' ? 'selected' : '' }}>ХАРИЛЦАХ</option>
+      </select>
+    </div>
+
     <div>
       <label>Эхлэх үлдэгдэл</label><br>
       <input type="number" step="0.01" name="opening" value="{{ openingBalance|default(0) }}">
@@ -66,6 +77,7 @@
         <th style="text-align:right">Орлого</th>
         <th style="text-align:right">Зарлага</th>
         <th style="text-align:right">Үлдэгдэл</th>
+        {# --- ШИНЭ --- #}<th>Эх сурвалж</th>
         <th>Төрөл</th>
       </tr>
     </thead>
@@ -73,21 +85,37 @@
       {% set running = openingBalance|default(0) %}
       {% if latest is defined and latest is not empty %}
         {% for t in latest %}
-          {# |float байхгүй тул тоо руу хүчээр кастлах: + 0 #}
           {% set amt = t.amount + 0 %}
           {% set running = running + amt %}
           <tr>
             <td>{{ t.date ? t.date|date('Y-m-d') : '' }}</td>
             <td>{{ t.description }}</td>
             <td style="text-align:right">{{ amt|number_format(2, '.', ',') }}</td>
-            <td style="text-align:right">{{ (t.isIncome ?? (t.getIsIncome is defined and t.getIsIncome ? t.getIsIncome : false)) ? amt|number_format(2, '.', ',') : '' }}</td>
-            <td style="text-align:right">{{ (t.isIncome ?? (t.getIsIncome is defined and t.getIsIncome ? t.getIsIncome : false)) ? '' : (amt * -1)|number_format(2, '.', ',') }}</td>
+            <td style="text-align:right">
+              {{ (t.isIncome ?? (t.getIsIncome is defined and t.getIsIncome ? t.getIsIncome : false)) ? amt|number_format(2, '.', ',') : '' }}
+            </td>
+            <td style="text-align:right">
+              {{ (t.isIncome ?? (t.getIsIncome is defined and t.getIsIncome ? t.getIsIncome : false)) ? '' : (amt * -1)|number_format(2, '.', ',') }}
+            </td>
             <td style="text-align:right">{{ running|number_format(2, '.', ',') }}</td>
+
+            {# --- ШИНЭ: Эх сурвалж badge --- #}
+            <td>
+              {% set o = (t.origin is defined ? t.origin : (t.getOrigin is defined ? t.getOrigin() : null)) %}
+              {% if o == 'CASH' %}
+                <span style="background:#f5f5f5;border:1px solid #ddd;border-radius:12px;padding:2px 8px;white-space:nowrap;">КАСС</span>
+              {% elseif o == 'BANK' %}
+                <span style="background:#eef7ff;border:1px solid #cfe4ff;border-radius:12px;padding:2px 8px;white-space:nowrap;">ХАРИЛЦАХ</span>
+              {% else %}
+                <span style="color:#999">-</span>
+              {% endif %}
+            </td>
+
             <td>{{ t.category ?: '-' }}</td>
           </tr>
         {% endfor %}
       {% else %}
-        <tr><td colspan="7">Мэдээлэл алга.</td></tr>
+        <tr><td colspan="8">Мэдээлэл алга.</td></tr>
       {% endif %}
     </tbody>
   </table>
