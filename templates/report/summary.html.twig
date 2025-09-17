@@ -39,7 +39,7 @@
       </select>
     </div>
 
-    {# --- ШИНЭ: Маягтын төрөл (origin) шүүлтүүр --- #}
+    {# --- Маягтын төрөл (origin) шүүлтүүр --- #}
     <div>
       <label>Маягтын төрөл</label><br>
       <select name="origin">
@@ -77,7 +77,7 @@
         <th style="text-align:right">Орлого</th>
         <th style="text-align:right">Зарлага</th>
         <th style="text-align:right">Үлдэгдэл</th>
-        {# --- ШИНЭ --- #}<th>Эх сурвалж</th>
+        <th>Эх сурвалж</th>
         <th>Төрөл</th>
       </tr>
     </thead>
@@ -99,9 +99,9 @@
             </td>
             <td style="text-align:right">{{ running|number_format(2, '.', ',') }}</td>
 
-            {# --- ШИНЭ: Эх сурвалж badge --- #}
+            {# --- Эх сурвалж badge (энийг ТОЛГОЙД НЭМЭГДСЭН "Эх сурвалж" баганад харуулна) --- #}
             <td>
-              {% set o = (t.origin is defined ? t.origin : (t.getOrigin is defined ? t.getOrigin() : null)) %}
+              {% set o = t.origin %}
               {% if o == 'CASH' %}
                 <span style="background:#f5f5f5;border:1px solid #ddd;border-radius:12px;padding:2px 8px;white-space:nowrap;">КАСС</span>
               {% elseif o == 'BANK' %}
