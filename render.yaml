@@ -1,15 +1,24 @@
+databases:
+  - name: mini-finance-db
+    plan: starter
+
 services:
   - type: web
     name: mini-finance
     env: php
     plan: starter
+    region: frankfurt
     autoDeploy: true
     healthCheckPath: /healthz
-    region: frankfurt
+
     buildCommand: |
       composer install --no-dev --optimize-autoloader
+
     startCommand: php -S 0.0.0.0:$PORT -t public
+
+    # Deploy бүрийн дараа DB-ээ entity-тэй нь sync хийх (миграцигаар)
     postdeployCommand: php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+
     envVars:
       - key: APP_ENV
         value: prod
@@ -17,9 +26,8 @@ services:
         value: "0"
       - key: OPENING_BALANCE
         value: "0"
+      # Postgres-ийн URL-ийг Render-ийн DB-ээс автоматаар авч DATABASE_URL-д онооно
       - key: DATABASE_URL
-        value: "sqlite:////var/data/data.db"
-    disks:
-      - name: app-data
-        mountPath: /var/data
-        sizeGB: 1
+        fromDatabase:
+          name: mini-finance-db
+          property: connectionString
