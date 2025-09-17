@@ -47,10 +47,20 @@
       </select>
     </div>
 
-    {# --- ШИНЭ: Хайлт (тайлбар дотроос) --- #}
     <div style="min-width:220px;">
       <label>Хайлт (утга)</label><br>
       <input type="text" name="q" value="{{ filters.q|default('') }}" placeholder="ж: кофе, оффис, түлш..." />
+    </div>
+
+    {# --- ШИНЭ: Харилцагч (distinct жагсаалтаас) --- #}
+    <div>
+      <label>Харилцагч</label><br>
+      <select name="customer">
+        <option value="">— Бүгд —</option>
+        {% for c in customers|default([]) %}
+          <option value="{{ c }}" {{ (filters.customer|default('')) == c ? 'selected' : '' }}>{{ c }}</option>
+        {% endfor %}
+      </select>
     </div>
 
     <div>
@@ -58,7 +68,6 @@
       <input type="number" step="0.01" name="opening" value="{{ openingBalance|default(0) }}">
     </div>
 
-    {# perPage сонголт #}
     <div>
       <label>Нэг хуудсанд</label><br>
       <select name="perPage">
@@ -82,7 +91,6 @@
     <div style="color:#666"><b>Мөр (нийт):</b> {{ totalCount|default(0) }}</div>
   </div>
 
-  {# --- ШИНЭ: КАСС vs ХАРИЛЦАХ нийлбэр --- #}
   <div style="margin:12px 0;border:1px solid #eee;padding:12px;">
     <h3 style="margin:0 0 8px 0;">КАСС / ХАРИЛЦАХ нийлбэр</h3>
     <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse; width:100%;max-width:700px;">
@@ -109,9 +117,6 @@
         </tr>
       </tbody>
     </table>
-    <div style="color:#666;font-size:12px;margin-top:6px;">
-      * Эндхүү үлдэгдэл нь тухайн эх сурвалжийн (орлого − зарлага) цэвэр дүн. Нийт үлдэгдэлд (opening) зөвхөн дээрх «Нийт үлдэгдэл» мөр нөлөөлнө.
-    </div>
   </div>
 
   <h3 style="margin-top:16px;">Гүйлгээний жагсаалт</h3>
@@ -125,6 +130,7 @@
         <th style="text-align:right">Зарлага</th>
         <th style="text-align:right">Үлдэгдэл</th>
         <th>Эх сурвалж</th>
+        <th>Харилцагч</th>
         <th>Төрөл</th>
       </tr>
     </thead>
@@ -146,25 +152,24 @@
             </td>
             <td style="text-align:right">{{ running|number_format(2, '.', ',') }}</td>
             <td>
-              {% set o = t.origin %}
-              {% if o == 'CASH' %}
+              {% if t.origin == 'CASH' %}
                 <span style="background:#f5f5f5;border:1px solid #ddd;border-radius:12px;padding:2px 8px;white-space:nowrap;">КАСС</span>
-              {% elseif o == 'BANK' %}
+              {% elseif t.origin == 'BANK' %}
                 <span style="background:#eef7ff;border:1px solid #cfe4ff;border-radius:12px;padding:2px 8px;white-space:nowrap;">ХАРИЛЦАХ</span>
               {% else %}
                 <span style="color:#999">-</span>
               {% endif %}
             </td>
+            <td>{{ t.customer ?: '-' }}</td>
             <td>{{ t.category ?: '-' }}</td>
           </tr>
         {% endfor %}
       {% else %}
-        <tr><td colspan="8">Мэдээлэл алга.</td></tr>
+        <tr><td colspan="9">Мэдээлэл алга.</td></tr>
       {% endif %}
     </tbody>
   </table>
 
-  {# --- Pagination --- #}
   {% if pagination is defined and pagination.totalPages > 1 %}
     <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:10px;flex-wrap:wrap;">
       {% set current = pagination.page %}
@@ -177,6 +182,7 @@
         dir:  filters.dir|default(''),
         origin: filters.origin|default(''),
         q: filters.q|default(''),
+        customer: filters.customer|default(''),
         perPage: per
       }) %}
 

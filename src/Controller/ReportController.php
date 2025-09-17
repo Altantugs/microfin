@@ -21,27 +21,27 @@ class ReportController extends AbstractController
     ): Response
     {
         if ($request->isMethod('POST')) {
-            // 1) Clear сонгосон бол бүх бичлэгийг устгана
+            // 1) Clear
             if ($request->request->get('clear')) {
                 $em->createQuery('DELETE FROM App\Entity\Transaction t')->execute();
             }
 
-            // 2) DB-д origin багана баталгаажуулна (Postgres/SQLite-д аюулгүй)
+            // 2) Баганууд баталгаажуулах (origin + customer)
             try {
-                $this->ensureOriginColumn($em);
+                $this->ensureColumns($em);
             } catch (\Throwable $e) {
                 $this->addFlash('error', 'DB migrate error: '.$e->getMessage());
                 return $this->redirectToRoute('upload_excel');
             }
 
-            // 3) Upload төрлийг авах (КАСС / ХАРИЛЦАХ)
+            // 3) Upload төрлийг авах
             $origin = strtoupper(trim((string)$request->request->get('origin', '')));
             if (!in_array($origin, ['CASH', 'BANK'], true)) {
                 $this->addFlash('error', 'Төрөл сонгоно уу: КАСС эсвэл ХАРИЛЦАХ ДАНСЫН ХУУЛГА.');
                 return $this->redirectToRoute('upload_excel');
             }
 
-            // 4) Файл шалгах
+            // 4) Файл
             $file = $request->files->get('excel');
             if (!$file) {
                 $this->addFlash('error', 'Файл сонгогдоогүй.');
@@ -49,7 +49,7 @@ class ReportController extends AbstractController
             }
 
             try {
-                // 5) Импорт (origin дамжуулна)
+                // 5) Импорт
                 $count = $excelImportService->import($file->getPathname(), $origin);
 
                 $this->addFlash('success', sprintf(
@@ -68,9 +68,12 @@ class ReportController extends AbstractController
     }
 
     #[Route('/report', name: 'report_summary', methods: ['GET'])]
-    public function summary(Request $request, TransactionRepository $repo): Response
+    public function summary(Request $request, TransactionRepository $repo, EntityManagerInterface $em): Response
     {
         try {
+            // Баганууд (prod дээр ч) бий эсэхийг баталгаажуулъя
+            $this->ensureColumns($em);
+
             // --- Шүүлтүүд
             $opening = $request->query->get('opening', $_ENV['OPENING_BALANCE'] ?? 0);
             $opening = is_numeric($opening) ? (float)$opening : 0.0;
@@ -80,9 +83,8 @@ class ReportController extends AbstractController
             $type    = trim((string) $request->query->get('type', ''));
             $dir     = trim((string) $request->query->get('dir', ''));
             $originQ = strtoupper(trim((string)$request->query->get('origin', '')));
-
-            // --- Хайлтын keyword (тайлбар дотроос)
-            $q = trim((string)$request->query->get('q', ''));
+            $q       = trim((string)$request->query->get('q', ''));
+            $customerQ = trim((string)$request->query->get('customer', ''));
 
             // --- Хуудаслалт
             $allowedPer = [30, 40, 50, 100, 200];
@@ -102,6 +104,18 @@ class ReportController extends AbstractController
             foreach ($typesRows as $row) {
                 $val = $row['category'] ?? null;
                 if ($val !== null && $val !== '') $types[] = $val;
+            }
+
+            // --- Харилцагчийн жагсаалт (distinct)
+            $customersRows = $repo->createQueryBuilder('t2')
+                ->select('DISTINCT t2.customer')
+                ->where('t2.customer IS NOT NULL AND t2.customer <> \'\'')
+                ->orderBy('t2.customer', 'ASC')
+                ->getQuery()->getArrayResult();
+            $customers = [];
+            foreach ($customersRows as $row) {
+                $val = $row['customer'] ?? null;
+                if ($val !== null && $val !== '') $customers[] = $val;
             }
 
             // --- Нийт шүүлттэй QB
@@ -131,8 +145,11 @@ class ReportController extends AbstractController
             if ($q !== '') {
                 $baseQb->andWhere('LOWER(t.description) LIKE :q')->setParameter('q', '%'.mb_strtolower($q).'%');
             }
+            if ($customerQ !== '') {
+                $baseQb->andWhere('t.customer = :cust')->setParameter('cust', $customerQ);
+            }
 
-            // --- Нийт тоо (COUNT query) — Postgres-д ORDER BY-той COUNT хориглодог тул reset
+            // --- Нийт тоо
             $countQb = clone $baseQb;
             $countQb->resetDQLPart('orderBy');
             $totalCount = (int) $countQb->select('COUNT(t.id)')->getQuery()->getSingleScalarResult();
@@ -141,7 +158,7 @@ class ReportController extends AbstractController
             if ($page > $totalPages) $page = $totalPages;
             $offset = ($page - 1) * $perPage;
 
-            // --- Нийт дүн (бүх шүүлттэй мөр)
+            // --- Нийт дүн
             $sumQb = clone $baseQb;
             $sumQb->resetDQLPart('orderBy');
             $sumQb->select(
@@ -153,7 +170,7 @@ class ReportController extends AbstractController
             $expense = (float)($sums['expenseSum'] ?? 0);
             $balance = $opening + ($income - $expense);
 
-            // --- КАСС vs ХАРИЛЦАХ нийлбэр (income/expense/balance тус тусад нь)
+            // --- КАСС vs ХАРИЛЦАХ нийлбэр
             $sumOriginQb = clone $baseQb;
             $sumOriginQb->resetDQLPart('orderBy');
             $sumOriginQb->select(
@@ -163,21 +180,16 @@ class ReportController extends AbstractController
                 "SUM(CASE WHEN t.origin = 'BANK' AND t.isIncome = false THEN ABS(t.amount) ELSE 0 END) AS bankExpense"
             );
             $by = $sumOriginQb->getQuery()->getSingleResult();
-            $cashIncome  = (float)($by['cashIncome']  ?? 0);
-            $cashExpense = (float)($by['cashExpense'] ?? 0);
-            $bankIncome  = (float)($by['bankIncome']  ?? 0);
-            $bankExpense = (float)($by['bankExpense'] ?? 0);
-
             $byOrigin = [
                 'cash' => [
-                    'income'  => $cashIncome,
-                    'expense' => $cashExpense,
-                    'balance' => $cashIncome - $cashExpense,
+                    'income'  => (float)($by['cashIncome']  ?? 0),
+                    'expense' => (float)($by['cashExpense'] ?? 0),
+                    'balance' => (float)($by['cashIncome']  ?? 0) - (float)($by['cashExpense'] ?? 0),
                 ],
                 'bank' => [
-                    'income'  => $bankIncome,
-                    'expense' => $bankExpense,
-                    'balance' => $bankIncome - $bankExpense,
+                    'income'  => (float)($by['bankIncome']  ?? 0),
+                    'expense' => (float)($by['bankExpense'] ?? 0),
+                    'balance' => (float)($by['bankIncome']  ?? 0) - (float)($by['bankExpense'] ?? 0),
                 ],
             ];
 
@@ -188,7 +200,7 @@ class ReportController extends AbstractController
                 ->setMaxResults($perPage)
                 ->getQuery()->getResult();
 
-            // --- Энэ хуудсын эхлэх үлдэгдэл = opening + өмнөх offset мөрийн нет
+            // --- Энэ хуудсын эхлэх үлдэгдэл
             $startBalance = $opening;
             if ($offset > 0) {
                 $prevQb = clone $baseQb;
@@ -198,9 +210,7 @@ class ReportController extends AbstractController
                     ->setMaxResults($offset)
                     ->getQuery()->getArrayResult();
                 $netBefore = 0.0;
-                foreach ($prevRows as $r) {
-                    $netBefore += (float)$r['amount']; // amount sign-тай хадгалагддаг
-                }
+                foreach ($prevRows as $r) { $netBefore += (float)$r['amount']; }
                 $startBalance += $netBefore;
             }
 
@@ -218,8 +228,10 @@ class ReportController extends AbstractController
                     'dir'    => $dir,
                     'origin' => $originQ,
                     'q'      => $q,
+                    'customer' => $customerQ,
                 ],
                 'types'          => $types,
+                'customers'      => $customers,
                 'totalCount'     => $totalCount,
                 'byOrigin'       => $byOrigin,
                 'pagination'     => [
@@ -240,34 +252,34 @@ class ReportController extends AbstractController
     }
 
     /**
-     * Prod/Postgres болон локал/SQLite аль алинд нь 'origin' багана
-     * байхгүй бол үүсгэж баталгаажуулна. (DBAL 3-safe)
+     * 'origin' болон 'customer' баганууд байхгүй бол үүсгэнэ (Postgres/SQLite-д аюулгүй).
      */
-    private function ensureOriginColumn(EntityManagerInterface $em): void
+    private function ensureColumns(EntityManagerInterface $em): void
     {
         $conn = $em->getConnection();
-        $platform = $conn->getDatabasePlatform()->getName(); // 'postgresql', 'sqlite', ...
+        $platform = $conn->getDatabasePlatform()->getName(); // 'postgresql' | 'sqlite' | ...
 
         if ($platform === 'postgresql') {
-            // Postgres — IF NOT EXISTS
             $conn->executeStatement('ALTER TABLE "transaction" ADD COLUMN IF NOT EXISTS origin VARCHAR(16) NULL');
+            $conn->executeStatement('ALTER TABLE "transaction" ADD COLUMN IF NOT EXISTS customer VARCHAR(120) NULL');
         } elseif ($platform === 'sqlite') {
-            // SQLite — introspect хийж байж нэмнэ
             $sm = $conn->createSchemaManager();
             $table = $sm->introspectTable('transaction');
-            $has = false;
-            foreach ($table->getColumns() as $col) {
-                if (strcasecmp($col->getName(), 'origin') === 0) { $has = true; break; }
-            }
-            if (!$has) {
+
+            $cols = [];
+            foreach ($table->getColumns() as $col) $cols[strtolower($col->getName())] = true;
+
+            if (!isset($cols['origin'])) {
                 $conn->executeStatement('ALTER TABLE "transaction" ADD COLUMN origin VARCHAR(16) NULL');
+            }
+            if (!isset($cols['customer'])) {
+                $conn->executeStatement('ALTER TABLE "transaction" ADD COLUMN customer VARCHAR(120) NULL');
             }
         } else {
-            // Бусад платформ: эхлээд шалгаж үзээд, байхгүй бол нэм
-            try {
-                $conn->executeStatement('SELECT origin FROM "transaction" WHERE 1=0');
-            } catch (\Throwable $e) {
-                $conn->executeStatement('ALTER TABLE "transaction" ADD COLUMN origin VARCHAR(16) NULL');
+            // Бусад платформ – simple check
+            foreach (['origin' => 'VARCHAR(16)', 'customer' => 'VARCHAR(120)'] as $name => $type) {
+                try { $conn->executeStatement('SELECT '.$name.' FROM "transaction" WHERE 1=0'); }
+                catch (\Throwable $e) { $conn->executeStatement('ALTER TABLE "transaction" ADD COLUMN '.$name.' '.$type.' NULL'); }
             }
         }
     }

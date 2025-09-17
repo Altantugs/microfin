@@ -10,19 +10,10 @@ class ExcelImportService
 {
     public function __construct(private EntityManagerInterface $em) {}
 
-    /**
-     * @param string $filepath  Upload хийсэн Excel-ийн зам
-     * @param string $origin    'CASH' | 'BANK'
-     */
+    // origin (CASH|BANK) дамжуулдаг
     public function import(string $filepath, string $origin): int
     {
-        // --- Origin normalize (Controller дээр шалгасан ч дахин баталгаажуулъя)
-        $originNorm = strtoupper(trim($origin));
-        if (!in_array($originNorm, ['CASH', 'BANK'], true)) {
-            throw new \InvalidArgumentException("Invalid origin: must be CASH or BANK");
-        }
-
-        // 0) Workbook ачаалж, BankStatement sheet-г илүүд үзнэ
+        // 0) Workbook
         $spreadsheet = IOFactory::load($filepath);
         $sheet = $spreadsheet->getSheetByName('BankStatement') ?? $spreadsheet->getActiveSheet();
 
@@ -31,7 +22,7 @@ class ExcelImportService
             throw new \RuntimeException("Мөр алга.");
         }
 
-        // 1) Толгой map
+        // 1) Header map
         $map = [];
         $rawHeaders = $rows[1];
         foreach ($rawHeaders as $k => $v) {
@@ -43,8 +34,7 @@ class ExcelImportService
             if (in_array($h, [
                 'description','тайлбар','гуилгээ','гүйлгээ','утга',
                 'гуилгээнии утга','гүйлгээний утга','гуйлгээний утга','гуйлгээнии утга',
-                'transaction details','details','detail',
-                'гүйлгээнийутга','гуйлгээнийутга'
+                'transaction details','details','detail','гүйлгээнийутга','гуйлгээнийутга'
             ])) { $map['desc'] = $k; }
 
             if (in_array($h, ['amount','дун','дvн','дүн'])) $map['amount'] = $k;
@@ -58,7 +48,12 @@ class ExcelImportService
 
             if (in_array($h, ['orlogo','орлого','income'])) $map['inc'] = $k;
             if (in_array($h, ['zaralga','зарлага','expense'])) $map['exp'] = $k;
-            if (in_array($h, ['uldegdel','үлдэгдэл','улдэгдэл','balance'])) $map['bal'] = $k; // optional
+            if (in_array($h, ['uldegdel','үлдэгдэл','улдэгдэл','balance'])) $map['bal'] = $k;
+
+            // --- ШИНЭ: Харилцагч алиасууд ---
+            if (in_array($h, ['customer','харилцагч','supplier','vendor','client','поставщик'])) {
+                $map['customer'] = $k;
+            }
         }
 
         if (!isset($map['desc'])) {
@@ -67,10 +62,9 @@ class ExcelImportService
                 $detected[] = sprintf('%s:%s→%s', $k, (string)$v, $this->normHeader((string)$v));
             }
             throw new \RuntimeException(
-                "Header 'desc' not found. Detected headers: " . implode(' | ', $detected)
+                "Header 'desc' not found. Detected: " . implode(' | ', $detected)
             );
         }
-
         if (!isset($map['date'])) {
             throw new \RuntimeException("Header 'date' not found");
         }
@@ -103,8 +97,11 @@ class ExcelImportService
             }
 
             $t = new Transaction();
-            // --- ШИНЭ: origin-ийг заавал онооно
-            $t->setOrigin($originNorm);
+
+            // origin
+            if (method_exists($t, 'setOrigin')) {
+                $t->setOrigin($origin); // 'CASH' / 'BANK'
+            }
 
             if (is_numeric($rawDate)) {
                 $dt = ExcelDate::excelToDateTimeObject((float)$rawDate);
@@ -129,18 +126,13 @@ class ExcelImportService
             $isIncome = null;
 
             if ($hasInc || $hasExp) {
-                if ($hasInc && !$hasExp) {
-                    $amountFloat = +abs($incVal);
-                    $isIncome = true;
-                } elseif (!$hasInc && $hasExp) {
-                    $amountFloat = -abs($expVal);
-                    $isIncome = false;
-                } else {
+                if ($hasInc && !$hasExp) { $amountFloat = +abs($incVal); $isIncome = true; }
+                elseif (!$hasInc && $hasExp) { $amountFloat = -abs($expVal); $isIncome = false; }
+                else {
                     $net = abs($incVal) - abs($expVal);
                     $amountFloat = $net;
                     $isIncome = ($net >= 0);
                 }
-
                 if ($signedVal !== null && $signedVal != 0.0) {
                     $amountFloat = (float)$signedVal;
                     $isIncome = ($amountFloat >= 0);
@@ -150,33 +142,29 @@ class ExcelImportService
                 if (isset($map['dir'])) {
                     $dir = strtoupper(trim((string)($r[$map['dir']] ?? '')));
                     $isIncome = in_array($dir, ['IN','ORLOGO','INCOME','ОРЛОГО'], true);
-                    if (!$isIncome && $amountFloat > 0) {
-                        $amountFloat = -$amountFloat;
-                    }
+                    if (!$isIncome && $amountFloat > 0) $amountFloat = -$amountFloat;
                 } else {
                     $isIncome = ($amountFloat >= 0);
                 }
             }
 
-            if ($isIncome === null) {
-                $isIncome = ($amountFloat >= 0);
-            }
+            if ($isIncome === null) $isIncome = ($amountFloat >= 0);
 
-            $val = number_format($amountFloat, 2, '.', '');
-            $t->setAmount($val);
+            $t->setAmount(number_format($amountFloat, 2, '.', ''));
             $t->setIsIncome((bool)$isIncome);
 
             // Ангилал / Төрөл
-            if (isset($map['type'])) {
-                $t->setCategory((string)($r[$map['type']] ?? null));
-            } elseif (isset($map['cat'])) {
-                $t->setCategory((string)($r[$map['cat']] ?? null));
-            } else {
-                $t->setCategory(null);
-            }
+            if (isset($map['type']))      { $t->setCategory((string)($r[$map['type']] ?? null)); }
+            elseif (isset($map['cat']))   { $t->setCategory((string)($r[$map['cat']] ?? null)); }
+            else                          { $t->setCategory(null); }
 
             // Валют
             $t->setCurrency(isset($map['cur']) ? (string)$r[$map['cur']] : 'MNT');
+
+            // --- ШИНЭ: Харилцагч
+            if (isset($map['customer'])) {
+                $t->setCustomer((string)($r[$map['customer']] ?? null));
+            }
 
             $this->em->persist($t);
             $count++;
@@ -186,7 +174,6 @@ class ExcelImportService
         return $count;
     }
 
-    // Header normalize — ө/ү-г БҮҮ соль (зөвхөн ё→е)
     private function normHeader(string $h): string
     {
         $h = str_replace("\xC2\xA0", ' ', $h);
@@ -198,7 +185,6 @@ class ExcelImportService
         return trim($h);
     }
 
-    // Amount parse
     private function parseAmount(string $s): float
     {
         $s = trim($s);
@@ -229,14 +215,11 @@ class ExcelImportService
 
         if ($hasComma && $hasDot) {
             $lastComma = strrpos($s, ','); $lastDot = strrpos($s, '.');
-            if ($lastComma !== false && $lastDot !== false) {
-                if ($lastComma > $lastDot) { $s = str_replace('.', '', $s); $s = str_replace(',', '.', $s); }
-                else { $s = str_replace(',', '', $s); }
-            }
+            if ($lastComma > $lastDot) { $s = str_replace('.', '', $s); $s = str_replace(',', '.', $s); }
+            else { $s = str_replace(',', '', $s); }
         } elseif ($hasComma) {
-            if (substr_count($s, ',') > 1) {
-                $s = str_replace(',', '', $s);
-            } else {
+            if (substr_count($s, ',') > 1) { $s = str_replace(',', '', $s); }
+            else {
                 [$left, $right] = array_pad(explode(',', $s, 2), 2, '');
                 if (preg_match('/^\d{3}$/', $right)) { $s = $left . $right; }
                 else { $s = $left . '.' . $right; }

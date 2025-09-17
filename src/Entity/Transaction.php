@@ -28,9 +28,13 @@ class Transaction
     #[ORM\Column(length:3)]
     private string $currency = 'MNT';
 
-    // --- Upload-ийн эх сурвалж (КАСС / ХАРИЛЦАХ) ---
-    #[ORM\Column(length:16, nullable:true)]
+    // Upload-ийн эх сурвалж (КАСС/BANK)
+    #[ORM\Column(type: "string", length: 16, nullable: true)]
     private ?string $origin = null;
+
+    // --- ШИНЭ: Харилцагч ---
+    #[ORM\Column(type: "string", length: 120, nullable: true)]
+    private ?string $customer = null;
 
     public function getId(): ?int { return $this->id; }
 
@@ -52,16 +56,14 @@ class Transaction
     public function getCurrency(): string { return $this->currency; }
     public function setCurrency(string $currency): self { $this->currency = $currency; return $this; }
 
-    // --- Эх сурвалж getter/setter ---
-    public function getOrigin(): ?string
-    {
-        return $this->origin;
-    }
-
+    public function getOrigin(): ?string { return $this->origin; }
     public function setOrigin(?string $origin): self
     {
-        // хадгалахаасаа өмнө uppercase болгоно: CASH эсвэл BANK
         $this->origin = $origin ? strtoupper($origin) : null;
         return $this;
     }
+
+    // --- ШИНЭ: customer getter/setter ---
+    public function getCustomer(): ?string { return $this->customer; }
+    public function setCustomer(?string $c): self { $this->customer = $c ?: null; return $this; }
 }
