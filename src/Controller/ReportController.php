@@ -21,12 +21,12 @@ class ReportController extends AbstractController
     ): Response
     {
         if ($request->isMethod('POST')) {
-            // 1) Хэрэв "clear" сонгосон бол бүх бичлэгийг цэвэрлэнэ
+            // 1) Clear сонгосон бол бүх бичлэгийг устгана
             if ($request->request->get('clear')) {
                 $em->createQuery('DELETE FROM App\Entity\Transaction t')->execute();
             }
 
-            // 2) DB-д origin багана заавал байлгах (prod/Postgres, local/SQLite)
+            // 2) DB-д origin багана заавал байхыг баталгаажуулна (Postgres/SQLite)
             try {
                 $this->ensureOriginColumn($em);
             } catch (\Throwable $e) {
@@ -71,7 +71,7 @@ class ReportController extends AbstractController
     public function summary(Request $request, TransactionRepository $repo): Response
     {
         try {
-            // --- Параметрүүд
+            // --- Шүүлтүүд
             $opening = $request->query->get('opening', $_ENV['OPENING_BALANCE'] ?? 0);
             $opening = is_numeric($opening) ? (float)$opening : 0.0;
 
@@ -81,74 +81,101 @@ class ReportController extends AbstractController
             $dir     = trim((string) $request->query->get('dir', ''));
             $originQ = strtoupper(trim((string)$request->query->get('origin', '')));
 
-            // --- Төрлүүдийн жагсаалт (distinct category)
+            // --- Хуудаслалт
+            $allowedPer = [30, 40, 50, 100, 200];
+            $perPage = (int) ($request->query->get('perPage', 30));
+            if (!in_array($perPage, $allowedPer, true)) $perPage = 30;
+
+            $page = (int) ($request->query->get('page', 1));
+            if ($page < 1) $page = 1;
+
+            // --- Төрлийн жагсаалт
             $typesRows = $repo->createQueryBuilder('t')
                 ->select('DISTINCT t.category')
                 ->where('t.category IS NOT NULL AND t.category <> \'\'')
                 ->orderBy('t.category', 'ASC')
-                ->getQuery()
-                ->getArrayResult();
-
+                ->getQuery()->getArrayResult();
             $types = [];
             foreach ($typesRows as $row) {
                 $val = $row['category'] ?? null;
                 if ($val !== null && $val !== '') $types[] = $val;
             }
 
-            // --- Өгөгдөл (шүүлттэй)
-            $qb = $repo->createQueryBuilder('t')
+            // --- Нийт шүүлттэй QB
+            $baseQb = $repo->createQueryBuilder('t')
                 ->orderBy('t.date', 'ASC')
                 ->addOrderBy('t.id', 'ASC');
 
             if ($fromStr !== '') {
                 $from = new \DateTimeImmutable($fromStr.' 00:00:00');
-                $qb->andWhere('t.date >= :from')->setParameter('from', $from);
+                $baseQb->andWhere('t.date >= :from')->setParameter('from', $from);
             }
             if ($toStr !== '') {
                 $to = new \DateTimeImmutable($toStr.' 23:59:59');
-                $qb->andWhere('t.date <= :to')->setParameter('to', $to);
+                $baseQb->andWhere('t.date <= :to')->setParameter('to', $to);
             }
             if ($type !== '') {
-                $qb->andWhere('t.category = :cat')->setParameter('cat', $type);
+                $baseQb->andWhere('t.category = :cat')->setParameter('cat', $type);
             }
             if ($dir === 'in') {
-                $qb->andWhere('t.isIncome = true');
+                $baseQb->andWhere('t.isIncome = true');
             } elseif ($dir === 'out') {
-                $qb->andWhere('t.isIncome = false');
+                $baseQb->andWhere('t.isIncome = false');
             }
-            // --- origin-оор шүүх
             if (in_array($originQ, ['CASH','BANK'], true)) {
-                $qb->andWhere('t.origin = :o')->setParameter('o', $originQ);
+                $baseQb->andWhere('t.origin = :o')->setParameter('o', $originQ);
             }
 
-            /** @var Transaction[] $filtered */
-            $filtered = $qb->getQuery()->getResult();
+            // --- Нийт тоо
+            $countQb = clone $baseQb;
+            $totalCount = (int) $countQb->select('COUNT(t.id)')->getQuery()->getSingleScalarResult();
 
-            // --- Нийт дүн
-            $income = 0.0;
-            $expense = 0.0;
-            foreach ($filtered as $t) {
-                $amt = (float) $t->getAmount();
+            $totalPages = (int) max(1, (int)ceil($totalCount / $perPage));
+            if ($page > $totalPages) $page = $totalPages;
+            $offset = ($page - 1) * $perPage;
 
-                $isIncome =
-                    method_exists($t, 'getIsIncome') ? (bool)$t->getIsIncome()
-                  : (method_exists($t, 'isIncome')   ? (bool)$t->isIncome()
-                  : false);
-
-                if ($isIncome) $income += abs($amt);
-                else           $expense += abs($amt);
-            }
+            // --- Нийт дүн (бүх шүүлттэй мөр)
+            $sumQb = clone $baseQb;
+            $sumQb->resetDQLPart('orderBy');
+            $sumQb->select(
+                'SUM(CASE WHEN t.isIncome = true  THEN ABS(t.amount) ELSE 0 END) AS incomeSum',
+                'SUM(CASE WHEN t.isIncome = false THEN ABS(t.amount) ELSE 0 END) AS expenseSum'
+            );
+            $sums = $sumQb->getQuery()->getSingleResult();
+            $income = (float)($sums['incomeSum'] ?? 0);
+            $expense = (float)($sums['expenseSum'] ?? 0);
             $balance = $opening + ($income - $expense);
 
-            // --- Сүүлийн 10 мөр
-            $latest = array_slice($filtered, max(0, count($filtered) - 10));
+            // --- Энэ хуудсын мөрүүд
+            $pageQb = clone $baseQb;
+            $rows = $pageQb
+                ->setFirstResult($offset)
+                ->setMaxResults($perPage)
+                ->getQuery()->getResult();
+
+            // --- Энэ хуудсын эхлэх үлдэгдэл = opening + өмнөх offset мөрийн нет
+            $startBalance = $opening;
+            if ($offset > 0) {
+                $prevQb = clone $baseQb;
+                $prevRows = $prevQb
+                    ->select('t.amount')
+                    ->setFirstResult(0)
+                    ->setMaxResults($offset)
+                    ->getQuery()->getArrayResult();
+                $netBefore = 0.0;
+                foreach ($prevRows as $r) {
+                    $netBefore += (float)$r['amount']; // amount sign-тай хадгалагддаг
+                }
+                $startBalance += $netBefore;
+            }
 
             return $this->render('report/summary.html.twig', [
                 'income'         => $income,
                 'expense'        => $expense,
                 'balance'        => $balance,
-                'latest'         => $latest,
+                'rows'           => $rows,             // ← pagination-той мөрүүд
                 'openingBalance' => $opening,
+                'startBalance'   => $startBalance,     // ← тухайн хуудсын running эхлэл
                 'filters'        => [
                     'from'   => $fromStr,
                     'to'     => $toStr,
@@ -157,7 +184,14 @@ class ReportController extends AbstractController
                     'origin' => $originQ,
                 ],
                 'types'          => $types,
-                'totalCount'     => count($filtered),
+                'totalCount'     => $totalCount,
+                'pagination'     => [
+                    'page'        => $page,
+                    'perPage'     => $perPage,
+                    'allowed'     => $allowedPer,
+                    'totalPages'  => $totalPages,
+                    'offset'      => $offset,
+                ],
             ]);
         } catch (\Throwable $e) {
             return new Response(

@@ -38,8 +38,6 @@
         <option value="out" {{ filters.dir|default('') == 'out' ? 'selected' : '' }}>Зарлага</option>
       </select>
     </div>
-
-    {# --- Маягтын төрөл (origin) шүүлтүүр --- #}
     <div>
       <label>Маягтын төрөл</label><br>
       <select name="origin">
@@ -48,11 +46,21 @@
         <option value="BANK" {{ (filters.origin|default('')) == 'BANK' ? 'selected' : '' }}>ХАРИЛЦАХ</option>
       </select>
     </div>
-
     <div>
       <label>Эхлэх үлдэгдэл</label><br>
       <input type="number" step="0.01" name="opening" value="{{ openingBalance|default(0) }}">
     </div>
+
+    {# Нэг хуудсанд хэдэн мөр — автоматаар шинэчилнэ #}
+    <div>
+      <label>Нэг хуудсанд</label><br>
+      <select name="perPage" onchange="this.form.submit()">
+        {% for n in pagination.allowed %}
+          <option value="{{ n }}" {{ pagination.perPage == n ? 'selected' : '' }}>{{ n }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
     <div>
       <button type="submit">Шүүх</button>
       <a href="{{ path('report_summary') }}" style="margin-left:8px">Цэвэрлэх</a>
@@ -64,10 +72,47 @@
     <div><b>Орлого:</b> {{ (income|default(0))|number_format(2, '.', ',') }}</div>
     <div><b>Зарлага:</b> {{ (expense|default(0))|number_format(2, '.', ',') }}</div>
     <div><b>Үлдэгдэл:</b> {{ (balance|default(0))|number_format(2, '.', ',') }}</div>
-    <div style="color:#666"><b>Мөр:</b> {{ totalCount|default(0) }}</div>
+    <div style="color:#666"><b>Мөр (нийт):</b> {{ totalCount|default(0) }}</div>
   </div>
 
-  <h3>Сүүлийн 10 гүйлгээ</h3>
+  {# Хуудаслалтын Query params #}
+  {% set q = {
+    from: filters.from|default(''),
+    to: filters.to|default(''),
+    type: filters.type|default(''),
+    dir:  filters.dir|default(''),
+    origin: filters.origin|default(''),
+    opening: openingBalance|default(0),
+    perPage: pagination.perPage
+  } %}
+
+  {# Дээд талын pagination #}
+  {% if pagination.totalPages > 1 %}
+    <div style="margin:10px 0;">
+      {% set p = pagination.page %}
+      {% set tp = pagination.totalPages %}
+      <a href="{{ path('report_summary', q|merge({page: 1})) }}">&laquo; Эхний</a>
+      <a href="{{ path('report_summary', q|merge({page: (p > 1 ? p-1 : 1)})) }}">&lsaquo; Өмнөх</a>
+
+      {% set start = p - 2 %}
+      {% set end = p + 2 %}
+      {% if start < 1 %}{% set end = end + (1 - start) %}{% set start = 1 %}{% endif %}
+      {% if end > tp %}{% set start = start - (end - tp) %}{% set end = tp %}{% endif %}
+      {% if start < 1 %}{% set start = 1 %}{% endif %}
+
+      {% for i in range(start, end) %}
+        {% if i == p %}
+          <span style="padding:4px 8px;border:1px solid #999;background:#eee;margin:0 2px;">{{ i }}</span>
+        {% else %}
+          <a style="padding:4px 8px;border:1px solid #ccc;margin:0 2px;" href="{{ path('report_summary', q|merge({page: i})) }}">{{ i }}</a>
+        {% endif %}
+      {% endfor %}
+
+      <a href="{{ path('report_summary', q|merge({page: (p < tp ? p+1 : tp)})) }}">Дараах &rsaquo;</a>
+      <a href="{{ path('report_summary', q|merge({page: tp})) }}">Сүүлийн &raquo;</a>
+    </div>
+  {% endif %}
+
   <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse; width:100%;">
     <thead>
       <tr>
@@ -82,9 +127,9 @@
       </tr>
     </thead>
     <tbody>
-      {% set running = openingBalance|default(0) %}
-      {% if latest is defined and latest is not empty %}
-        {% for t in latest %}
+      {% set running = startBalance|default(openingBalance|default(0)) %}
+      {% if rows is defined and rows is not empty %}
+        {% for t in rows %}
           {% set amt = t.amount + 0 %}
           {% set running = running + amt %}
           <tr>
@@ -98,10 +143,8 @@
               {{ (t.isIncome ?? (t.getIsIncome is defined and t.getIsIncome ? t.getIsIncome : false)) ? '' : (amt * -1)|number_format(2, '.', ',') }}
             </td>
             <td style="text-align:right">{{ running|number_format(2, '.', ',') }}</td>
-
-            {# --- Эх сурвалж badge (энийг ТОЛГОЙД НЭМЭГДСЭН "Эх сурвалж" баганад харуулна) --- #}
             <td>
-              {% set o = t.origin %}
+              {% set o = (t.origin is defined ? t.origin : (t.getOrigin is defined ? t.getOrigin() : null)) %}
               {% if o == 'CASH' %}
                 <span style="background:#f5f5f5;border:1px solid #ddd;border-radius:12px;padding:2px 8px;white-space:nowrap;">КАСС</span>
               {% elseif o == 'BANK' %}
@@ -110,7 +153,6 @@
                 <span style="color:#999">-</span>
               {% endif %}
             </td>
-
             <td>{{ t.category ?: '-' }}</td>
           </tr>
         {% endfor %}
@@ -119,4 +161,16 @@
       {% endif %}
     </tbody>
   </table>
+
+  {# Доод талын pagination (тав тухтай) #}
+  {% if pagination.totalPages > 1 %}
+    <div style="margin:10px 0;">
+      <a href="{{ path('report_summary', q|merge({page: 1})) }}">&laquo; Эхний</a>
+      <a href="{{ path('report_summary', q|merge({page: (pagination.page > 1 ? pagination.page-1 : 1)})) }}">&lsaquo; Өмнөх</a>
+      <span style="margin:0 8px;color:#666;">Хуудас {{ pagination.page }} / {{ pagination.totalPages }}</span>
+      <a href="{{ path('report_summary', q|merge({page: (pagination.page < pagination.totalPages ? pagination.page+1 : pagination.totalPages)})) }}">Дараах &rsaquo;</a>
+      <a href="{{ path('report_summary', q|merge({page: pagination.totalPages})) }}">Сүүлийн &raquo;</a>
+    </div>
+  {% endif %}
+
 {% endblock %}
