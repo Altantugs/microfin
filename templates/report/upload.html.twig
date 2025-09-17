@@ -15,6 +15,17 @@
       <input type="file" name="excel" accept=".xlsx,.xls,.csv" required>
     </div>
 
+    {# --- ШИНЭ: Маягтын төрөл сонголт (КАСС / ХАРИЛЦАХ) --- #}
+    <div style="margin:10px 0 14px">
+      <b>Маягтын төрөл:</b><br>
+      <label style="margin-right:12px">
+        <input type="radio" name="origin" value="CASH" required> КАСС
+      </label>
+      <label>
+        <input type="radio" name="origin" value="BANK"> ХАРИЛЦАХ ДАНСЫН ХУУЛГА
+      </label>
+    </div>
+
     <label style="display:block;margin:8px 0;">
       <input type="checkbox" name="clear" value="1">
       Өмнөх бичлэгүүдийг устгаад шинээр импортлох
