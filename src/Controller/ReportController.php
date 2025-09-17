@@ -26,7 +26,7 @@ class ReportController extends AbstractController
                 $em->createQuery('DELETE FROM App\Entity\Transaction t')->execute();
             }
 
-            // 2) DB-д origin багана заавал байхыг баталгаажуулна (Postgres/SQLite)
+            // 2) DB-д origin багана баталгаажуулна (Postgres/SQLite-д аюулгүй)
             try {
                 $this->ensureOriginColumn($em);
             } catch (\Throwable $e) {
@@ -81,6 +81,9 @@ class ReportController extends AbstractController
             $dir     = trim((string) $request->query->get('dir', ''));
             $originQ = strtoupper(trim((string)$request->query->get('origin', '')));
 
+            // --- Хайлтын keyword (тайлбар дотроос)
+            $q = trim((string)$request->query->get('q', ''));
+
             // --- Хуудаслалт
             $allowedPer = [30, 40, 50, 100, 200];
             $perPage = (int) ($request->query->get('perPage', 30));
@@ -125,8 +128,11 @@ class ReportController extends AbstractController
             if (in_array($originQ, ['CASH','BANK'], true)) {
                 $baseQb->andWhere('t.origin = :o')->setParameter('o', $originQ);
             }
+            if ($q !== '') {
+                $baseQb->andWhere('LOWER(t.description) LIKE :q')->setParameter('q', '%'.mb_strtolower($q).'%');
+            }
 
-            // --- Нийт тоо (COUNT query) — Postgres дээр ORDER BY-той COUNT хориглодог тул reset
+            // --- Нийт тоо (COUNT query) — Postgres-д ORDER BY-той COUNT хориглодог тул reset
             $countQb = clone $baseQb;
             $countQb->resetDQLPart('orderBy');
             $totalCount = (int) $countQb->select('COUNT(t.id)')->getQuery()->getSingleScalarResult();
@@ -146,6 +152,34 @@ class ReportController extends AbstractController
             $income = (float)($sums['incomeSum'] ?? 0);
             $expense = (float)($sums['expenseSum'] ?? 0);
             $balance = $opening + ($income - $expense);
+
+            // --- КАСС vs ХАРИЛЦАХ нийлбэр (income/expense/balance тус тусад нь)
+            $sumOriginQb = clone $baseQb;
+            $sumOriginQb->resetDQLPart('orderBy');
+            $sumOriginQb->select(
+                "SUM(CASE WHEN t.origin = 'CASH' AND t.isIncome = true  THEN ABS(t.amount) ELSE 0 END) AS cashIncome",
+                "SUM(CASE WHEN t.origin = 'CASH' AND t.isIncome = false THEN ABS(t.amount) ELSE 0 END) AS cashExpense",
+                "SUM(CASE WHEN t.origin = 'BANK' AND t.isIncome = true  THEN ABS(t.amount) ELSE 0 END) AS bankIncome",
+                "SUM(CASE WHEN t.origin = 'BANK' AND t.isIncome = false THEN ABS(t.amount) ELSE 0 END) AS bankExpense"
+            );
+            $by = $sumOriginQb->getQuery()->getSingleResult();
+            $cashIncome  = (float)($by['cashIncome']  ?? 0);
+            $cashExpense = (float)($by['cashExpense'] ?? 0);
+            $bankIncome  = (float)($by['bankIncome']  ?? 0);
+            $bankExpense = (float)($by['bankExpense'] ?? 0);
+
+            $byOrigin = [
+                'cash' => [
+                    'income'  => $cashIncome,
+                    'expense' => $cashExpense,
+                    'balance' => $cashIncome - $cashExpense,
+                ],
+                'bank' => [
+                    'income'  => $bankIncome,
+                    'expense' => $bankExpense,
+                    'balance' => $bankIncome - $bankExpense,
+                ],
+            ];
 
             // --- Энэ хуудсын мөрүүд
             $pageQb = clone $baseQb;
@@ -183,9 +217,11 @@ class ReportController extends AbstractController
                     'type'   => $type,
                     'dir'    => $dir,
                     'origin' => $originQ,
+                    'q'      => $q,
                 ],
                 'types'          => $types,
                 'totalCount'     => $totalCount,
+                'byOrigin'       => $byOrigin,
                 'pagination'     => [
                     'page'        => $page,
                     'perPage'     => $perPage,

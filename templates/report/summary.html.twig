@@ -46,17 +46,24 @@
         <option value="BANK" {{ (filters.origin|default('')) == 'BANK' ? 'selected' : '' }}>ХАРИЛЦАХ</option>
       </select>
     </div>
+
+    {# --- ШИНЭ: Хайлт (тайлбар дотроос) --- #}
+    <div style="min-width:220px;">
+      <label>Хайлт (утга)</label><br>
+      <input type="text" name="q" value="{{ filters.q|default('') }}" placeholder="ж: кофе, оффис, түлш..." />
+    </div>
+
     <div>
       <label>Эхлэх үлдэгдэл</label><br>
       <input type="number" step="0.01" name="opening" value="{{ openingBalance|default(0) }}">
     </div>
 
-    {# Нэг хуудсанд хэдэн мөр — автоматаар шинэчилнэ #}
+    {# perPage сонголт #}
     <div>
       <label>Нэг хуудсанд</label><br>
-      <select name="perPage" onchange="this.form.submit()">
-        {% for n in pagination.allowed %}
-          <option value="{{ n }}" {{ pagination.perPage == n ? 'selected' : '' }}>{{ n }}</option>
+      <select name="perPage">
+        {% for n in pagination.allowed|default([30,40,50,100,200]) %}
+          <option value="{{ n }}" {{ pagination.perPage|default(30) == n ? 'selected' : '' }}>{{ n }}</option>
         {% endfor %}
       </select>
     </div>
@@ -67,52 +74,47 @@
     </div>
   </form>
 
-  <div style="display:flex;gap:24px;margin:16px 0;">
+  <div style="display:flex;gap:24px;margin:16px 0;flex-wrap:wrap;">
     <div><b>Эхлэх үлдэгдэл:</b> {{ (openingBalance|default(0))|number_format(2, '.', ',') }}</div>
-    <div><b>Орлого:</b> {{ (income|default(0))|number_format(2, '.', ',') }}</div>
-    <div><b>Зарлага:</b> {{ (expense|default(0))|number_format(2, '.', ',') }}</div>
-    <div><b>Үлдэгдэл:</b> {{ (balance|default(0))|number_format(2, '.', ',') }}</div>
+    <div><b>Орлого (нийт):</b> {{ (income|default(0))|number_format(2, '.', ',') }}</div>
+    <div><b>Зарлага (нийт):</b> {{ (expense|default(0))|number_format(2, '.', ',') }}</div>
+    <div><b>Үлдэгдэл (нийт):</b> {{ (balance|default(0))|number_format(2, '.', ',') }}</div>
     <div style="color:#666"><b>Мөр (нийт):</b> {{ totalCount|default(0) }}</div>
   </div>
 
-  {# Хуудаслалтын Query params #}
-  {% set q = {
-    from: filters.from|default(''),
-    to: filters.to|default(''),
-    type: filters.type|default(''),
-    dir:  filters.dir|default(''),
-    origin: filters.origin|default(''),
-    opening: openingBalance|default(0),
-    perPage: pagination.perPage
-  } %}
-
-  {# Дээд талын pagination #}
-  {% if pagination.totalPages > 1 %}
-    <div style="margin:10px 0;">
-      {% set p = pagination.page %}
-      {% set tp = pagination.totalPages %}
-      <a href="{{ path('report_summary', q|merge({page: 1})) }}">&laquo; Эхний</a>
-      <a href="{{ path('report_summary', q|merge({page: (p > 1 ? p-1 : 1)})) }}">&lsaquo; Өмнөх</a>
-
-      {% set start = p - 2 %}
-      {% set end = p + 2 %}
-      {% if start < 1 %}{% set end = end + (1 - start) %}{% set start = 1 %}{% endif %}
-      {% if end > tp %}{% set start = start - (end - tp) %}{% set end = tp %}{% endif %}
-      {% if start < 1 %}{% set start = 1 %}{% endif %}
-
-      {% for i in range(start, end) %}
-        {% if i == p %}
-          <span style="padding:4px 8px;border:1px solid #999;background:#eee;margin:0 2px;">{{ i }}</span>
-        {% else %}
-          <a style="padding:4px 8px;border:1px solid #ccc;margin:0 2px;" href="{{ path('report_summary', q|merge({page: i})) }}">{{ i }}</a>
-        {% endif %}
-      {% endfor %}
-
-      <a href="{{ path('report_summary', q|merge({page: (p < tp ? p+1 : tp)})) }}">Дараах &rsaquo;</a>
-      <a href="{{ path('report_summary', q|merge({page: tp})) }}">Сүүлийн &raquo;</a>
+  {# --- ШИНЭ: КАСС vs ХАРИЛЦАХ нийлбэр --- #}
+  <div style="margin:12px 0;border:1px solid #eee;padding:12px;">
+    <h3 style="margin:0 0 8px 0;">КАСС / ХАРИЛЦАХ нийлбэр</h3>
+    <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse; width:100%;max-width:700px;">
+      <thead>
+        <tr>
+          <th>Эх сурвалж</th>
+          <th style="text-align:right;">Орлого</th>
+          <th style="text-align:right;">Зарлага</th>
+          <th style="text-align:right;">Үлдэгдэл</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span style="background:#f5f5f5;border:1px solid #ddd;border-radius:12px;padding:2px 8px;">КАСС</span></td>
+          <td style="text-align:right;">{{ (byOrigin.cash.income|default(0))|number_format(2, '.', ',') }}</td>
+          <td style="text-align:right;">{{ (byOrigin.cash.expense|default(0))|number_format(2, '.', ',') }}</td>
+          <td style="text-align:right;">{{ (byOrigin.cash.balance|default(0))|number_format(2, '.', ',') }}</td>
+        </tr>
+        <tr>
+          <td><span style="background:#eef7ff;border:1px solid #cfe4ff;border-radius:12px;padding:2px 8px;">ХАРИЛЦАХ</span></td>
+          <td style="text-align:right;">{{ (byOrigin.bank.income|default(0))|number_format(2, '.', ',') }}</td>
+          <td style="text-align:right;">{{ (byOrigin.bank.expense|default(0))|number_format(2, '.', ',') }}</td>
+          <td style="text-align:right;">{{ (byOrigin.bank.balance|default(0))|number_format(2, '.', ',') }}</td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="color:#666;font-size:12px;margin-top:6px;">
+      * Эндхүү үлдэгдэл нь тухайн эх сурвалжийн (орлого − зарлага) цэвэр дүн. Нийт үлдэгдэлд (opening) зөвхөн дээрх «Нийт үлдэгдэл» мөр нөлөөлнө.
     </div>
-  {% endif %}
+  </div>
 
+  <h3 style="margin-top:16px;">Гүйлгээний жагсаалт</h3>
   <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse; width:100%;">
     <thead>
       <tr>
@@ -127,7 +129,7 @@
       </tr>
     </thead>
     <tbody>
-      {% set running = startBalance|default(openingBalance|default(0)) %}
+      {% set running = startBalance|default(0) %}
       {% if rows is defined and rows is not empty %}
         {% for t in rows %}
           {% set amt = t.amount + 0 %}
@@ -144,7 +146,7 @@
             </td>
             <td style="text-align:right">{{ running|number_format(2, '.', ',') }}</td>
             <td>
-              {% set o = (t.origin is defined ? t.origin : (t.getOrigin is defined ? t.getOrigin() : null)) %}
+              {% set o = t.origin %}
               {% if o == 'CASH' %}
                 <span style="background:#f5f5f5;border:1px solid #ddd;border-radius:12px;padding:2px 8px;white-space:nowrap;">КАСС</span>
               {% elseif o == 'BANK' %}
@@ -162,15 +164,41 @@
     </tbody>
   </table>
 
-  {# Доод талын pagination (тав тухтай) #}
-  {% if pagination.totalPages > 1 %}
-    <div style="margin:10px 0;">
-      <a href="{{ path('report_summary', q|merge({page: 1})) }}">&laquo; Эхний</a>
-      <a href="{{ path('report_summary', q|merge({page: (pagination.page > 1 ? pagination.page-1 : 1)})) }}">&lsaquo; Өмнөх</a>
-      <span style="margin:0 8px;color:#666;">Хуудас {{ pagination.page }} / {{ pagination.totalPages }}</span>
-      <a href="{{ path('report_summary', q|merge({page: (pagination.page < pagination.totalPages ? pagination.page+1 : pagination.totalPages)})) }}">Дараах &rsaquo;</a>
-      <a href="{{ path('report_summary', q|merge({page: pagination.totalPages})) }}">Сүүлийн &raquo;</a>
+  {# --- Pagination --- #}
+  {% if pagination is defined and pagination.totalPages > 1 %}
+    <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:10px;flex-wrap:wrap;">
+      {% set current = pagination.page %}
+      {% set total   = pagination.totalPages %}
+      {% set per     = pagination.perPage %}
+      {% set baseUrl = path('report_summary', {
+        from: filters.from|default(''),
+        to: filters.to|default(''),
+        type: filters.type|default(''),
+        dir:  filters.dir|default(''),
+        origin: filters.origin|default(''),
+        q: filters.q|default(''),
+        perPage: per
+      }) %}
+
+      {% if current > 1 %}
+        <a href="{{ baseUrl ~ '&page=' ~ (current - 1) }}">« Өмнөх</a>
+      {% endif %}
+
+      {% for p in 1..total %}
+        {% if p == current %}
+          <span style="padding:4px 8px;border:1px solid #aaa;border-radius:6px;background:#eee;">{{ p }}</span>
+        {% elseif p <= 2 or p > total-2 or (p >= current-2 and p <= current+2) %}
+          <a href="{{ baseUrl ~ '&page=' ~ p }}" style="padding:4px 8px;">{{ p }}</a>
+        {% elseif p == 3 and current > 5 %}
+          <span>…</span>
+        {% elseif p == total-2 and current < total-4 %}
+          <span>…</span>
+        {% endif %}
+      {% endfor %}
+
+      {% if current < total %}
+        <a href="{{ baseUrl ~ '&page=' ~ (current + 1) }}">Дараах »</a>
+      {% endif %}
     </div>
   {% endif %}
-
 {% endblock %}
