@@ -10,7 +10,9 @@ class ExcelImportService
 {
     public function __construct(private EntityManagerInterface $em) {}
 
-    public function import(string $filepath): int
+    // BEFORE: public function import(string $filepath): int
+    // AFTER:  origin (CASH|BANK) дамжуулдаг болгов
+    public function import(string $filepath, string $origin): int
     {
         // 0) Workbook ачаалж, BankStatement sheet-г илүүд үзнэ
         $spreadsheet = IOFactory::load($filepath);
@@ -36,7 +38,6 @@ class ExcelImportService
                 'description','тайлбар','гуилгээ','гүйлгээ','утга',
                 'гуилгээнии утга','гүйлгээний утга','гуйлгээний утга','гуйлгээнии утга',
                 'transaction details','details','detail',
-                // зайгүй хувилбарууд (зарим CSV/Excel separator гажсан үед)
                 'гүйлгээнийутга','гуйлгээнийутга'
             ])) { $map['desc'] = $k; }
 
@@ -103,6 +104,11 @@ class ExcelImportService
             }
 
             $t = new Transaction();
+
+            // NEW: upload-ийн төрлийг хадгалах (entity-д setter байвал)
+            if (method_exists($t, 'setOrigin')) {
+                $t->setOrigin($origin); // 'CASH' эсвэл 'BANK'
+            }
 
             if (is_numeric($rawDate)) {
                 $dt = ExcelDate::excelToDateTimeObject((float)$rawDate);
