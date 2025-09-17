@@ -9,7 +9,7 @@ services:
     buildCommand: |
       composer install --no-dev --optimize-autoloader
     startCommand: php -S 0.0.0.0:$PORT -t public
-    postdeployCommand: php bin/console doctrine:schema:update --force --no-interaction
+    postdeployCommand: php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
     envVars:
       - key: APP_ENV
         value: prod
