@@ -26,8 +26,13 @@ class ReportController extends AbstractController
                 $em->createQuery('DELETE FROM App\Entity\Transaction t')->execute();
             }
 
-            // 2) DB-д origin багана заавал байлгах (prod/Postgres дээр ч алдаа гаргахгүй)
-            $this->ensureOriginColumn($em);
+            // 2) DB-д origin багана заавал байлгах (prod/Postgres, local/SQLite)
+            try {
+                $this->ensureOriginColumn($em);
+            } catch (\Throwable $e) {
+                $this->addFlash('error', 'DB migrate error: '.$e->getMessage());
+                return $this->redirectToRoute('upload_excel');
+            }
 
             // 3) Upload төрлийг авах (КАСС / ХАРИЛЦАХ)
             $origin = strtoupper(trim((string)$request->request->get('origin', '')));
@@ -111,7 +116,7 @@ class ReportController extends AbstractController
             } elseif ($dir === 'out') {
                 $qb->andWhere('t.isIncome = false');
             }
-            // --- ШИНЭ: origin-оор шүүх
+            // --- origin-оор шүүх
             if (in_array($originQ, ['CASH','BANK'], true)) {
                 $qb->andWhere('t.origin = :o')->setParameter('o', $originQ);
             }
@@ -149,13 +154,12 @@ class ReportController extends AbstractController
                     'to'     => $toStr,
                     'type'   => $type,
                     'dir'    => $dir,
-                    'origin' => $originQ, // template-д selected байлгахын тулд
+                    'origin' => $originQ,
                 ],
                 'types'          => $types,
                 'totalCount'     => count($filtered),
             ]);
         } catch (\Throwable $e) {
-            // Түр debug: 500-ийн яг шалтгааныг дэлгэцэнд бичнэ
             return new Response(
                 'DEBUG /report ERROR: '.$e->getMessage().' ['.$e->getFile().':'.$e->getLine().']',
                 500,
@@ -166,18 +170,18 @@ class ReportController extends AbstractController
 
     /**
      * Prod/Postgres болон локал/SQLite аль алинд нь 'origin' багана
-     * байхгүй бол үүсгэж баталгаажуулна.
+     * байхгүй бол үүсгэж баталгаажуулна. (DBAL 3-safe)
      */
     private function ensureOriginColumn(EntityManagerInterface $em): void
     {
         $conn = $em->getConnection();
-        $driver = $conn->getDriver()->getName(); // pdo_pgsql, pdo_sqlite, ...
+        $platform = $conn->getDatabasePlatform()->getName(); // 'postgresql', 'sqlite', ...
 
-        if (str_contains($driver, 'pgsql')) {
-            // Postgres — IF NOT EXISTS дэмждэг
+        if ($platform === 'postgresql') {
+            // Postgres — IF NOT EXISTS
             $conn->executeStatement('ALTER TABLE "transaction" ADD COLUMN IF NOT EXISTS origin VARCHAR(16) NULL');
-        } else {
-            // SQLite — IF NOT EXISTS байхгүй тул introspect хийж шалгана
+        } elseif ($platform === 'sqlite') {
+            // SQLite — introspect хийж байж нэмнэ
             $sm = $conn->createSchemaManager();
             $table = $sm->introspectTable('transaction');
             $has = false;
@@ -185,6 +189,13 @@ class ReportController extends AbstractController
                 if (strcasecmp($col->getName(), 'origin') === 0) { $has = true; break; }
             }
             if (!$has) {
+                $conn->executeStatement('ALTER TABLE "transaction" ADD COLUMN origin VARCHAR(16) NULL');
+            }
+        } else {
+            // Бусад платформ: эхлээд шалгаж үзээд, байхгүй бол нэм
+            try {
+                $conn->executeStatement('SELECT origin FROM "transaction" WHERE 1=0');
+            } catch (\Throwable $e) {
                 $conn->executeStatement('ALTER TABLE "transaction" ADD COLUMN origin VARCHAR(16) NULL');
             }
         }
