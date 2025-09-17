@@ -33,13 +33,13 @@ class Transaction
     #[ORM\Column(type: "string", length: 16, nullable: true)]
     private ?string $origin = null;
 
-    // --- ШИНЭ: Харилцагч ---
+    // Харилцагч
     #[ORM\Column(type: "string", length: 120, nullable: true)]
     private ?string $customer = null;
 
-    // --- ШИНЭ: Хэрэглэгч холбоо ---
+    // Хэрэглэгч холбоо (NOT NULL болгосон)
     #[ORM\ManyToOne(targetEntity: User::class)]
-    #[ORM\JoinColumn(nullable: true)]   // <-- Энд өөрчилсөн
+    #[ORM\JoinColumn(nullable: false)]
     private ?User $user = null;
 
     public function getId(): ?int { return $this->id; }
@@ -72,7 +72,7 @@ class Transaction
     public function getCustomer(): ?string { return $this->customer; }
     public function setCustomer(?string $c): self { $this->customer = $c ?: null; return $this; }
 
-    // --- Getter/setter for User ---
+    // User getter/setter
     public function getUser(): ?User { return $this->user; }
     public function setUser(?User $user): self { $this->user = $user; return $this; }
 }
