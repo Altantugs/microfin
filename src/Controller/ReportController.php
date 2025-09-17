@@ -26,7 +26,7 @@ class ReportController extends AbstractController
                 $em->createQuery('DELETE FROM App\Entity\Transaction t')->execute();
             }
 
-            // --- ШИНЭ: origin (КАСС/BANK) авах
+            // --- origin (КАСС/BANK) авах
             $origin = strtoupper(trim((string)$request->request->get('origin', '')));
             if (!in_array($origin, ['CASH', 'BANK'], true)) {
                 $this->addFlash('error', 'Төрөл сонгоно уу: КАСС эсвэл ХАРИЛЦАХ ДАНСЫН ХУУЛГА.');
@@ -41,7 +41,7 @@ class ReportController extends AbstractController
             }
 
             try {
-                // --- ШИНЭ: import-д origin дамжуулна (ДАРААГИЙН АЛХАМД сервисийг өөрчилнө)
+                // import-д origin дамжуулна
                 $count = $excelImportService->import($file->getPathname(), $origin);
 
                 $this->addFlash('success', sprintf(
@@ -71,6 +71,7 @@ class ReportController extends AbstractController
             $toStr   = trim((string) $request->query->get('to', ''));
             $type    = trim((string) $request->query->get('type', ''));
             $dir     = trim((string) $request->query->get('dir', ''));
+            $originQ = strtoupper(trim((string)$request->query->get('origin', '')));
 
             // --- Төрлүүдийн жагсаалт (distinct category)
             $typesRows = $repo->createQueryBuilder('t')
@@ -107,6 +108,10 @@ class ReportController extends AbstractController
             } elseif ($dir === 'out') {
                 $qb->andWhere('t.isIncome = false');
             }
+            // --- ШИНЭ: origin-оор шүүх
+            if (in_array($originQ, ['CASH','BANK'], true)) {
+                $qb->andWhere('t.origin = :o')->setParameter('o', $originQ);
+            }
 
             /** @var Transaction[] $filtered */
             $filtered = $qb->getQuery()->getResult();
@@ -137,10 +142,11 @@ class ReportController extends AbstractController
                 'latest'         => $latest,
                 'openingBalance' => $opening,
                 'filters'        => [
-                    'from' => $fromStr,
-                    'to'   => $toStr,
-                    'type' => $type,
-                    'dir'  => $dir,
+                    'from'   => $fromStr,
+                    'to'     => $toStr,
+                    'type'   => $type,
+                    'dir'    => $dir,
+                    'origin' => $originQ, // ШИНЭ: template-д selected байлгахын тулд
                 ],
                 'types'          => $types,
                 'totalCount'     => count($filtered),
