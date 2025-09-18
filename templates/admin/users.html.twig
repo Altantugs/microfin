@@ -1,0 +1,30 @@
+{% extends 'base.html.twig' %}
+{% block title %}Admin — Users{% endblock %}
+{% block body %}
+  <h2>Хэрэглэгчдийн жагсаалт</h2>
+  <p><a href="{{ path('admin_dashboard') }}">← Буцах</a></p>
+  <table border="1" cellpadding="6" cellspacing="0">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Email</th>
+        <th>Roles</th>
+        <th>Status</th>
+        <th>Created</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for u in items %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ u.email }}</td>
+        <td>{{ (u.roles ?? [])|join(', ') }}</td>
+        <td>{{ u.status }}</td>
+        <td>{{ u.createdAt ? u.createdAt|date('Y-m-d H:i') : '' }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5">Хоосон.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

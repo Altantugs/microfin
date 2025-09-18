@@ -1,0 +1,34 @@
+{% extends 'base.html.twig' %}
+{% block title %}Admin — Reports{% endblock %}
+{% block body %}
+  <h2>Хэрэглэгч тус бүрийн тайлан</h2>
+  <p><a href="{{ path('admin_dashboard') }}">← Буцах</a></p>
+  <table border="1" cellpadding="6" cellspacing="0">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Email</th>
+        <th>Tx count</th>
+        <th>Income</th>
+        <th>Expense</th>
+        <th>Net</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for r in rows %}
+      {% set income  = r.incomeTotal  ?? 0 %}
+      {% set expense = r.expenseTotal ?? 0 %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ r.email }}</td>
+        <td style="text-align:right">{{ r.txCount|default(0) }}</td>
+        <td style="text-align:right">{{ income|number_format(2, '.', ',') }}</td>
+        <td style="text-align:right">{{ expense|number_format(2, '.', ',') }}</td>
+        <td style="text-align:right">{{ (income + expense)|number_format(2, '.', ',') }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6">Өгөгдөл алга.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

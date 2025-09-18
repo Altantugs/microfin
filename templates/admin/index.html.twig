@@ -1,0 +1,13 @@
+{% extends 'base.html.twig' %}
+{% block title %}Admin — Dashboard{% endblock %}
+{% block body %}
+  <h2>Admin Dashboard</h2>
+  <ul>
+    <li>Нийт хэрэглэгч: <strong>{{ totalUsers }}</strong></li>
+    <li>Нийт гүйлгээ: <strong>{{ totalTx }}</strong></li>
+  </ul>
+  <p>
+    <a href="{{ path('admin_users') }}">Хэрэглэгчид</a> ·
+    <a href="{{ path('admin_reports') }}">Тайлан</a>
+  </p>
+{% endblock %}
