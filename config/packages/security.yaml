@@ -1,4 +1,8 @@
 security:
+  # Админ = USER эрхийг автоматаар агуулна
+  role_hierarchy:
+    ROLE_ADMIN: [ROLE_USER]
+
   password_hashers:
     App\Entity\User: 'auto'
 
@@ -21,10 +25,15 @@ security:
         check_path: app_login
       logout:
         path: app_logout
-        # target: homepage  # хүсвэл
 
   access_control:
-    - { path: ^/login, roles: PUBLIC_ACCESS }
+    # Нээлттэй хуудаснууд
+    - { path: ^/login,    roles: PUBLIC_ACCESS }
     - { path: ^/register, roles: PUBLIC_ACCESS }
-    - { path: ^/assets, roles: PUBLIC_ACCESS }
-    - { path: ^/, roles: ROLE_USER }
+    - { path: ^/assets,   roles: PUBLIC_ACCESS }
+
+    # Админ хэсэг — зөвхөн ROLE_ADMIN
+    - { path: ^/admin,    roles: ROLE_ADMIN }
+
+    # Бусад бүх зам — нэвтэрсэн хэрэглэгч
+    - { path: ^/,         roles: ROLE_USER }

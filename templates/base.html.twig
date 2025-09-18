@@ -15,6 +15,11 @@
         {% if app.user %}
           <a href="{{ path('upload_excel') }}" style="text-decoration:none;">Upload Excel</a>
           <a href="{{ path('report_summary') }}" style="text-decoration:none;">Report</a>
+
+          {# Зөвхөн админуудад ADMIN цэс #}
+          {% if is_granted('ROLE_ADMIN') %}
+            <a href="{{ path('admin_dashboard') }}" style="text-decoration:none;font-weight:600;">ADMIN</a>
+          {% endif %}
         {% endif %}
       </div>
 
