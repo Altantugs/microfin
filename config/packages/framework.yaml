@@ -6,18 +6,23 @@ framework:
 
   session:
     handler_id: null
-    save_path: '%kernel.project_dir%/var/sessions/%kernel.environment%'
     cookie_secure: auto
     cookie_samesite: lax
     cookie_httponly: true
-    cookie_lifetime: 0   # browser session
-    gc_probability: 1
-    gc_divisor: 100
 
   form: true
+
   router:
     utf8: true
+
   http_method_override: false
+
+  # ✅ Login throttling-д ашиглах rate limiter
+  rate_limiter:
+    login:
+      policy: 'fixed_window'
+      limit: 5           # 1 минутанд 5 удаа оролдлого
+      interval: '1 minute'
 
 when@test:
   framework:

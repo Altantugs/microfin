@@ -1,5 +1,5 @@
+# config/packages/security.yaml
 security:
-  # Админ = USER эрхийг автоматаар агуулна
   role_hierarchy:
     ROLE_ADMIN: [ROLE_USER]
 
@@ -20,42 +20,27 @@ security:
     main:
       lazy: true
       provider: app_user_provider
-
-      # Нэвтрэх форм
       form_login:
         login_path: app_login
         check_path: app_login
-        enable_csrf: true
-
-      # Гарах
       logout:
         path: app_logout
 
-      # Админд зориулсан импёрсонаци (өөр хэрэглэгчээр түр орж шалгах)
-      switch_user:
-        parameter: _switch_user
-        role: ROLE_ADMIN
-
-      # Нэвтрэх оролдлогын хязгаарлалт (бот/бийд хамгаалалт)
+      # ✅ Login throttling — дээрх "framework.rate_limiter.login"-тай холбоно
       login_throttling:
-        max_attempts: 5
-        interval: '1 minute'
+        limiter: login
 
-      # (Сонголт) Намайг сана — 2 долоо хоног
+      # (сонголт) remember_me-г идэвхтэй байлгаж байгаа бол энд байна:
       remember_me:
         secret: '%env(APP_SECRET)%'
-        lifetime: 1209600   # 14 days
-        path: '/'
-        always_remember_me: false
+        lifetime: 1209600   # 14 хоног
+        path: /
+        httponly: true
+        samesite: lax
 
   access_control:
-    # Нээлттэй хуудаснууд
     - { path: ^/login,    roles: PUBLIC_ACCESS }
     - { path: ^/register, roles: PUBLIC_ACCESS }
     - { path: ^/assets,   roles: PUBLIC_ACCESS }
-
-    # Админ хэсэг — зөвхөн ROLE_ADMIN
     - { path: ^/admin,    roles: ROLE_ADMIN }
-
-    # Бусад бүх зам — нэвтэрсэн хэрэглэгч
     - { path: ^/,         roles: ROLE_USER }
