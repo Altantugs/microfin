@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 namespace App\Service;
 
 use App\Entity\Transaction;
@@ -8,23 +10,31 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use Symfony\Bundle\SecurityBundle\Security;
 
-class ExcelImportService
+final class ExcelImportService
 {
     public function __construct(
         private EntityManagerInterface $em,
         private Security $security, // нэвтэрсэн хэрэглэгчийг авах
     ) {}
 
-    // origin (CASH|BANK) дамжуулдаг
+    /**
+     * @throws \RuntimeException|\LogicException
+     */
     public function import(string $filepath, string $origin): int
     {
+        // *** Нэвтэрсэн хэрэглэгч заавал байх ёстой (transaction.user nullable=false) ***
+        $user = $this->security->getUser();
+        if (!$user instanceof User) {
+            throw new \LogicException('Нэвтэрсэн хэрэглэгч шаардлагатай.');
+        }
+
         // 0) Workbook
         $spreadsheet = IOFactory::load($filepath);
         $sheet = $spreadsheet->getSheetByName('BankStatement') ?? $spreadsheet->getActiveSheet();
 
         $rows = $sheet->toArray(null, true, true, true);
         if (count($rows) < 2) {
-            throw new \RuntimeException("Мөр алга.");
+            throw new \RuntimeException('Мөр алга.');
         }
 
         // 1) Header map
@@ -34,29 +44,28 @@ class ExcelImportService
             if ($v === null) continue;
             $h = $this->normHeader((string)$v);
 
-            if (in_array($h, ['date','огноо'])) $map['date'] = $k;
+            if (in_array($h, ['date','огноо'], true)) $map['date'] = $k;
 
             if (in_array($h, [
                 'description','тайлбар','гуилгээ','гүйлгээ','утга',
                 'гуилгээнии утга','гүйлгээний утга','гуйлгээний утга','гуйлгээнии утга',
                 'transaction details','details','detail','гүйлгээнийутга','гуйлгээнийутга'
-            ])) { $map['desc'] = $k; }
+            ], true)) { $map['desc'] = $k; }
 
-            if (in_array($h, ['amount','дун','дvн','дүн'])) $map['amount'] = $k;
+            if (in_array($h, ['amount','дун','дvн','дүн'], true)) $map['amount'] = $k;
 
-            if (in_array($h, ['direction','чиглэл'])) $map['dir'] = $k;
+            if (in_array($h, ['direction','чиглэл'], true)) $map['dir'] = $k;
 
-            if (in_array($h, ['category','зориулалт','ангилал'])) $map['cat'] = $k;
-            if (in_array($h, ['turul','төрөл','type'])) $map['type'] = $k;
+            if (in_array($h, ['category','зориулалт','ангилал'], true)) $map['cat'] = $k;
+            if (in_array($h, ['turul','төрөл','type'], true)) $map['type'] = $k;
 
-            if (in_array($h, ['currency','валют'])) $map['cur'] = $k;
+            if (in_array($h, ['currency','валют'], true)) $map['cur'] = $k;
 
-            if (in_array($h, ['orlogo','орлого','income'])) $map['inc'] = $k;
-            if (in_array($h, ['zaralga','зарлага','expense'])) $map['exp'] = $k;
-            if (in_array($h, ['uldegdel','үлдэгдэл','улдэгдэл','balance'])) $map['bal'] = $k;
+            if (in_array($h, ['orlogo','орлого','income'], true)) $map['inc'] = $k;
+            if (in_array($h, ['zaralga','зарлага','expense'], true)) $map['exp'] = $k;
+            if (in_array($h, ['uldegdel','үлдэгдэл','улдэгдэл','balance'], true)) $map['bal'] = $k;
 
-            // --- ШИНЭ: Харилцагч алиасууд ---
-            if (in_array($h, ['customer','харилцагч','supplier','vendor','client','поставщик'])) {
+            if (in_array($h, ['customer','харилцагч','supplier','vendor','client','поставщик'], true)) {
                 $map['customer'] = $k;
             }
         }
@@ -66,15 +75,13 @@ class ExcelImportService
             foreach ($rawHeaders as $k => $v) {
                 $detected[] = sprintf('%s:%s→%s', $k, (string)$v, $this->normHeader((string)$v));
             }
-            throw new \RuntimeException(
-                "Header 'desc' not found. Detected: " . implode(' | ', $detected)
-            );
+            throw new \RuntimeException("Header 'desc' not found. Detected: " . implode(' | ', $detected));
         }
         if (!isset($map['date'])) {
             throw new \RuntimeException("Header 'date' not found");
         }
         if (!isset($map['amount']) && !isset($map['inc']) && !isset($map['exp'])) {
-            throw new \RuntimeException("Дүн эсвэл (Орлого/Зарлага) багана шаардлагатай.");
+            throw new \RuntimeException('Дүн эсвэл (Орлого/Зарлага) багана шаардлагатай.');
         }
 
         // 2) Импорт
@@ -103,17 +110,15 @@ class ExcelImportService
 
             $t = new Transaction();
 
-            // origin
+            // Origin (CASH/BANK)
             if (method_exists($t, 'setOrigin')) {
-                $t->setOrigin($origin); // 'CASH' / 'BANK'
+                $t->setOrigin($origin);
             }
 
-            // Нэвтэрсэн хэрэглэгчийг Transaction-д шивж өгөх
-            $user = $this->security->getUser();
-            if ($user instanceof User) {
-                $t->setUser($user);
-            }
+            // *** Эзэмшигчийг заавал онооно ***
+            $t->setUser($user);
 
+            // Огнооны parse
             if (is_numeric($rawDate)) {
                 $dt = ExcelDate::excelToDateTimeObject((float)$rawDate);
                 $t->setDate(\DateTimeImmutable::createFromMutable($dt));
@@ -153,7 +158,7 @@ class ExcelImportService
                 if (isset($map['dir'])) {
                     $dir = strtoupper(trim((string)($r[$map['dir']] ?? '')));
                     $isIncome = in_array($dir, ['IN','ORLOGO','INCOME','ОРЛОГО'], true);
-                    if (!$isIncome && $amountFloat > 0) $amountFloat = -$amountFloat;
+                    if ($isIncome === false && $amountFloat > 0) $amountFloat = -$amountFloat;
                 } else {
                     $isIncome = ($amountFloat >= 0);
                 }
@@ -172,7 +177,7 @@ class ExcelImportService
             // Валют
             $t->setCurrency(isset($map['cur']) ? (string)$r[$map['cur']] : 'MNT');
 
-            // --- ШИНЭ: Харилцагч
+            // Харилцагч
             if (isset($map['customer'])) {
                 $t->setCustomer((string)($r[$map['customer']] ?? null));
             }
