@@ -1,34 +1,38 @@
 {% extends 'base.html.twig' %}
+
 {% block title %}Admin — Reports{% endblock %}
+
 {% block body %}
-  <h2>Хэрэглэгч тус бүрийн тайлан</h2>
-  <p><a href="{{ path('admin_dashboard') }}">← Буцах</a></p>
-  <table border="1" cellpadding="6" cellspacing="0">
+  <h2>Тайлан (хэрэглэгчээр)</h2>
+  <p style="margin:8px 0;"><a href="{{ path('admin_dashboard') }}">← Буцах</a></p>
+
+  <table style="width:100%; border-collapse:collapse;">
     <thead>
-      <tr>
-        <th>#</th>
-        <th>Email</th>
-        <th>Tx count</th>
-        <th>Income</th>
-        <th>Expense</th>
-        <th>Net</th>
+      <tr style="text-align:left; border-bottom:1px solid #eee;">
+        <th style="padding:8px;">Имэйл</th>
+        <th style="padding:8px;">Гүйлгээ (тоо)</th>
+        <th style="padding:8px;">Орлого (нийт)</th>
+        <th style="padding:8px;">Зарлага (нийт)</th>
+        <th style="padding:8px;">Цэвэр дүн</th>
       </tr>
     </thead>
     <tbody>
-    {% for r in rows %}
-      {% set income  = r.incomeTotal  ?? 0 %}
-      {% set expense = r.expenseTotal ?? 0 %}
-      <tr>
-        <td>{{ loop.index }}</td>
-        <td>{{ r.email }}</td>
-        <td style="text-align:right">{{ r.txCount|default(0) }}</td>
-        <td style="text-align:right">{{ income|number_format(2, '.', ',') }}</td>
-        <td style="text-align:right">{{ expense|number_format(2, '.', ',') }}</td>
-        <td style="text-align:right">{{ (income + expense)|number_format(2, '.', ',') }}</td>
-      </tr>
-    {% else %}
-      <tr><td colspan="6">Өгөгдөл алга.</td></tr>
-    {% endfor %}
+      {% for r in rows %}
+        {% set income = (r.incomeTotal ?? 0)|float %}
+        {% set expense = (r.expenseTotal ?? 0)|float %}
+        {% set net = income + expense %}
+        <tr style="border-bottom:1px solid #f3f4f6;">
+          <td style="padding:8px;">{{ r.email }}</td>
+          <td style="padding:8px;">{{ r.txCount }}</td>
+          <td style="padding:8px;">{{ income|number_format(2, '.', ',') }}</td>
+          <td style="padding:8px;">{{ expense|number_format(2, '.', ',') }}</td>
+          <td style="padding:8px; font-weight:600;">
+            {{ net|number_format(2, '.', ',') }}
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="5" style="padding:8px; opacity:.7;">Мэдээлэл алга.</td></tr>
+      {% endfor %}
     </tbody>
   </table>
 {% endblock %}

@@ -1,13 +1,23 @@
 {% extends 'base.html.twig' %}
+
 {% block title %}Admin — Dashboard{% endblock %}
+
 {% block body %}
   <h2>Admin Dashboard</h2>
-  <ul>
-    <li>Нийт хэрэглэгч: <strong>{{ totalUsers }}</strong></li>
-    <li>Нийт гүйлгээ: <strong>{{ totalTx }}</strong></li>
-  </ul>
-  <p>
-    <a href="{{ path('admin_users') }}">Хэрэглэгчид</a> ·
-    <a href="{{ path('admin_reports') }}">Тайлан</a>
+
+  <div style="display:flex; gap:16px; margin:12px 0;">
+    <div style="border:1px solid #eee; padding:12px; border-radius:8px;">
+      <div style="opacity:.7;">Нийт хэрэглэгч</div>
+      <div style="font-size:24px; font-weight:700;">{{ totalUsers }}</div>
+    </div>
+    <div style="border:1px solid #eee; padding:12px; border-radius:8px;">
+      <div style="opacity:.7;">Нийт гүйлгээ</div>
+      <div style="font-size:24px; font-weight:700;">{{ totalTx }}</div>
+    </div>
+  </div>
+
+  <p style="margin-top:16px;">
+    <a href="{{ path('admin_users') }}">👤 Хэрэглэгчдийн жагсаалт</a> ·
+    <a href="{{ path('admin_reports') }}">📊 Тайлан</a>
   </p>
 {% endblock %}
