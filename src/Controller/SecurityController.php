@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 namespace App\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -8,22 +10,24 @@ use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
 
 final class SecurityController extends AbstractController
 {
-    #[Route('/login', name: 'login', methods: ['GET','POST'])]
+    #[Route('/login', name: 'app_login', methods: ['GET','POST'])]
     public function login(AuthenticationUtils $authenticationUtils): Response
     {
-        // Алдаа ба сүүлийн оруулсан имэйл
-        $error = $authenticationUtils->getLastAuthenticationError();
-        $lastUsername = $authenticationUtils->getLastUsername();
+        // Хэрэв аль хэдийн нэвтэрсэн бол нүүр рүү буцаая (хүсвэл upload/report руу чиглүүлж болно)
+        if ($this->getUser()) {
+            return $this->redirect('/');
+        }
 
-        return $this->render('security/login.html.twig', [
-            'last_username' => $lastUsername,
-            'error' => $error,
+        return $this->render('login.html.twig', [
+            'last_username' => $authenticationUtils->getLastUsername(),
+            'error' => $authenticationUtils->getLastAuthenticationError(),
         ]);
     }
 
-    #[Route('/logout', name: 'logout', methods: ['GET'])]
+    #[Route('/logout', name: 'app_logout', methods: ['GET'])]
     public function logout(): void
     {
-        throw new \LogicException('Logout is handled by Symfony firewall.');
+        // Firewall барьдаг, энд хүрэхгүй
+        throw new \LogicException('This should never be reached.');
     }
 }
