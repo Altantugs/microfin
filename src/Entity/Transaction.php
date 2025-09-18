@@ -9,7 +9,7 @@ use Doctrine\DBAL\Types\Types;
 use App\Entity\User;
 
 #[ORM\Entity(repositoryClass: TransactionRepository::class)]
-#[ORM\Table(name: 'transactions')]
+#[ORM\Table(name: 'transaction')] // ← миграцитай тааруулж СИНГУЛЯР болгосон
 class Transaction
 {
     #[ORM\Id, ORM\GeneratedValue, ORM\Column(type: Types::INTEGER)]
@@ -41,7 +41,7 @@ class Transaction
     #[ORM\Column(type: Types::STRING, length: 120, nullable: true)]
     private ?string $customer = null;
 
-    // Хэрэглэгчтэй N:1 (User::transactions-тай уялна), устгахад каскаддах
+    // Хэрэглэгчтэй N:1 (User::transactions-тай уялна), устгахад каскад
     #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'transactions')]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private ?User $user = null;

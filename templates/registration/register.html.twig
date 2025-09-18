@@ -1,0 +1,28 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Бүртгүүлэх{% endblock %}
+
+{% block body %}
+  <div class="container" style="max-width:520px;margin:2rem auto;">
+    <h1 style="margin-bottom:1rem;">Бүртгүүлэх</h1>
+
+    {% for label, messages in app.flashes %}
+      {% for message in messages %}
+        <div class="flash-{{ label }}" style="padding:.75rem 1rem;margin:.5rem 0;border:1px solid #ddd;border-radius:8px;">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endfor %}
+
+    {{ form_start(registrationForm) }}
+      {{ form_row(registrationForm.email) }}
+      {{ form_row(registrationForm.plainPassword) }}
+      <button type="submit" class="btn btn-primary" style="margin-top:.75rem;">Бүртгүүлэх</button>
+    {{ form_end(registrationForm) }}
+
+    <p style="margin-top:1rem;">
+      Аль хэдийнээ бүртгэлтэй юу?
+      <a href="{{ path('app_login') }}">Нэвтрэх</a>
+    </p>
+  </div>
+{% endblock %}

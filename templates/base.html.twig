@@ -4,17 +4,32 @@
     <meta charset="UTF-8">
     <title>{% block title %}Microfin{% endblock %}</title>
   </head>
-  <body style="font-family:system-ui;max-width:800px;margin:32px auto;padding:0 16px;">
+  <body style="font-family:system-ui;max-width:900px;margin:32px auto;padding:0 16px;">
+
+    {# === NAVBAR === #}
+    <nav style="display:flex;gap:12px;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #eee;margin-bottom:16px;">
+      <div style="display:flex;gap:12px;align-items:center;">
+        <a href="/" style="text-decoration:none;">Home</a>
+        <a href="/healthz" style="text-decoration:none;">Health</a>
+
+        {% if app.user %}
+          <a href="{{ path('upload_excel') }}" style="text-decoration:none;">Upload Excel</a>
+          <a href="{{ path('report_summary') }}" style="text-decoration:none;">Report</a>
+        {% endif %}
+      </div>
+
+      <div style="display:flex;gap:12px;align-items:center;">
+        {% if app.user %}
+          <span style="opacity:.8;">{{ app.user.userIdentifier }}</span>
+          <a href="{{ path('app_logout') }}" style="text-decoration:none;">Гарах</a>
+        {% else %}
+          <a href="{{ path('app_login') }}" style="text-decoration:none;">Нэвтрэх</a>
+          <a href="{{ path('app_register') }}" style="text-decoration:none;">Бүртгүүлэх</a>
+        {% endif %}
+      </div>
+    </nav>
+
     <h1 style="margin:0 0 16px;">Microfin — Welcome</h1>
-
-    <p>
-  <a href="/">Home</a> ·
-  <a href="/healthz">Health</a> ·
-  <a href="{{ path('upload_excel') }}">Upload Excel</a> ·
-  <a href="{{ path('report_summary') }}">Report</a>
-</p>
-
-    
 
     {# Flash messages #}
     {% for label, messages in app.flashes %}

@@ -1,5 +1,8 @@
 controllers:
-    resource:
-        path: ../src/Controller/
-        namespace: App\Controller
-    type: attribute
+  resource: ../src/Controller/
+  type: attribute
+
+when@dev:
+  _debug:
+    resource: '@FrameworkBundle/Resources/config/routing/dev.xml'
+    prefix: /_profiler
