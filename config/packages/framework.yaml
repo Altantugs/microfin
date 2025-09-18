@@ -2,17 +2,19 @@
 framework:
   secret: '%env(APP_SECRET)%'
 
-  # CSRF хамгаалалт (form_login, бүртгэлд шаардлагатай)
+  # CSRF хамгаалалт (form_login, бүртгэлд)
   csrf_protection: true
 
-  # Native session (CSRF/Form/Login-д хэрэгтэй)
+  # Session (CSRF/Form/Login-д хэрэгтэй) — тогтмол save_path заая
   session:
     handler_id: null
+    save_path: '%kernel.project_dir%/var/sessions/%kernel.environment%'
+    name: MICROFINSESSID
     cookie_secure: auto
     cookie_samesite: lax
     cookie_httponly: true
 
-  # Form component идэвхтэй байх ёстой
+  # Form component
   form: true
 
   # Router
