@@ -3,12 +3,24 @@
 {% block title %}Бүртгүүлэх{% endblock %}
 
 {% block body %}
-  <h2>Шинэ хэрэглэгч бүртгүүлэх</h2>
+  <h2 style="margin:0 0 12px;">Бүртгүүлэх</h2>
 
-  {{ form_start(registrationForm) }}
-    {{ form_row(registrationForm.email) }}
-    {{ form_row(registrationForm.plainPassword, { label: 'Нууц үг' }) }}
+  {# form helper нь _token-ийг автоматаар зөв нэрээр (registration_form[_token]) шургуулна #}
+  {{ form_start(form, { attr: { autocomplete: 'off', novalidate: 'novalidate' } }) }}
+    {{ form_row(form.email, {
+      label: 'Имэйл',
+      attr: { placeholder: 'name@example.com' }
+    }) }}
+
+    {{ form_row(form.plainPassword, {
+      label: 'Нууц үг',
+      attr: { placeholder: '••••••••' }
+    }) }}
+
     <button type="submit">Бүртгүүлэх</button>
-    {{ form_rest(registrationForm) }} {# CSRF токеныг баталгаатай оруулах #}
-  {{ form_end(registrationForm) }}
+  {{ form_end(form) }}
+
+  <p style="margin-top:12px;">
+    Аль хэдийн бүртгэлтэй? <a href="{{ path('app_login') }}">Нэвтрэх</a>
+  </p>
 {% endblock %}
