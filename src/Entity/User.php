@@ -6,6 +6,8 @@ use App\Repository\UserRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: 'users')]
@@ -35,10 +37,15 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(name: 'created_at', type: 'datetime_immutable', options: ['default' => 'now()'])]
     private \DateTimeImmutable $createdAt;
 
+    // --- Хэрэглэгчийн эзэмшлийн гүйлгээ (1:N) ---
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: Transaction::class, orphanRemoval: true)]
+    private Collection $transactions;
+
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
-        // ROLE_USER-г анхдагчаар өгье
+        $this->transactions = new ArrayCollection();
+
         if (empty($this->roles)) {
             $this->roles = ['ROLE_USER'];
         }
@@ -132,6 +139,31 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setCreatedAt(\DateTimeImmutable $createdAt): self
     {
         $this->createdAt = $createdAt;
+        return $this;
+    }
+
+    /** @return Collection<int, Transaction> */
+    public function getTransactions(): Collection
+    {
+        return $this->transactions;
+    }
+
+    public function addTransaction(Transaction $transaction): self
+    {
+        if (!$this->transactions->contains($transaction)) {
+            $this->transactions->add($transaction);
+            $transaction->setUser($this);
+        }
+        return $this;
+    }
+
+    public function removeTransaction(Transaction $transaction): self
+    {
+        if ($this->transactions->removeElement($transaction)) {
+            if ($transaction->getUser() === $this) {
+                $transaction->setUser(null);
+            }
+        }
         return $this;
     }
 }

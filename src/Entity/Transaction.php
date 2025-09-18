@@ -1,45 +1,49 @@
 <?php
+declare(strict_types=1);
+
 namespace App\Entity;
 
 use App\Repository\TransactionRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Doctrine\DBAL\Types\Types;
 use App\Entity\User;
 
 #[ORM\Entity(repositoryClass: TransactionRepository::class)]
+#[ORM\Table(name: 'transactions')]
 class Transaction
 {
-    #[ORM\Id, ORM\GeneratedValue, ORM\Column]
+    #[ORM\Id, ORM\GeneratedValue, ORM\Column(type: Types::INTEGER)]
     private ?int $id = null;
 
-    #[ORM\Column]
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $date;
 
-    #[ORM\Column(length:255)]
+    #[ORM\Column(type: Types::STRING, length: 255)]
     private string $description;
 
-    #[ORM\Column(length:100, nullable:true)]
+    #[ORM\Column(type: Types::STRING, length: 100, nullable: true)]
     private ?string $category = null;
 
-    #[ORM\Column(type: "decimal", precision: 15, scale: 2)]
+    #[ORM\Column(type: Types::DECIMAL, precision: 15, scale: 2)]
     private string $amount = '0.00';
 
-    #[ORM\Column(type: "boolean")]
+    #[ORM\Column(type: Types::BOOLEAN)]
     private bool $isIncome = false;
 
-    #[ORM\Column(length:3)]
+    #[ORM\Column(type: Types::STRING, length: 3)]
     private string $currency = 'MNT';
 
     // Upload-ийн эх сурвалж (КАСС/BANK)
-    #[ORM\Column(type: "string", length: 16, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 16, nullable: true)]
     private ?string $origin = null;
 
     // Харилцагч
-    #[ORM\Column(type: "string", length: 120, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 120, nullable: true)]
     private ?string $customer = null;
 
-    // Хэрэглэгч холбоо (NOT NULL болгосон)
-    #[ORM\ManyToOne(targetEntity: User::class)]
-    #[ORM\JoinColumn(nullable: false)]
+    // Хэрэглэгчтэй N:1 (User::transactions-тай уялна), устгахад каскаддах
+    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'transactions')]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private ?User $user = null;
 
     public function getId(): ?int { return $this->id; }
@@ -72,7 +76,6 @@ class Transaction
     public function getCustomer(): ?string { return $this->customer; }
     public function setCustomer(?string $c): self { $this->customer = $c ?: null; return $this; }
 
-    // User getter/setter
     public function getUser(): ?User { return $this->user; }
     public function setUser(?User $user): self { $this->user = $user; return $this; }
 }
