@@ -1,13 +1,12 @@
 <?php
-declare(strict_types=1);
-
 namespace App\Controller;
 
 use App\Entity\User;
 use App\Form\RegistrationFormType;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\{Request, Response};
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Annotation\Route;
 
@@ -17,44 +16,35 @@ final class RegistrationController extends AbstractController
     public function register(
         Request $request,
         EntityManagerInterface $em,
-        UserPasswordHasherInterface $hasher
+        UserPasswordHasherInterface $passwordHasher
     ): Response {
-        $user = new User();
+        // Хэрэв аль хэдийн нэвтэрсэн бол нүүр рүү буцаая (сонголт)
+        if ($this->getUser()) {
+            return $this->redirectToRoute('app_login');
+        }
 
+        $user = new User();
         $form = $this->createForm(RegistrationFormType::class, $user);
         $form->handleRequest($request);
 
-        // Алдааг ил тод харуулахын тулд form errors-ийг stdout руу логлоно
-        if ($form->isSubmitted() && !$form->isValid()) {
-            $errs = [];
-            foreach ($form->getErrors(true, true) as $e) {
-                $errs[] = $e->getMessage();
-            }
-            if ($errs) {
-                error_log('[register] form errors: ' . implode(' | ', $errs));
-            }
-        }
-
         if ($form->isSubmitted() && $form->isValid()) {
-            // Нууц үг хешлэх
-            $plain = (string)$form->get('plainPassword')->getData();
-            $user->setPassword($hasher->hashPassword($user, $plain));
-
-            // Анхдагч ROLE_USER (entity constructor-д байгаа ч баталгаажуулж үлдээнэ)
-            $roles = $user->getRoles();
-            if (!in_array('ROLE_USER', $roles, true)) {
-                $user->setRoles([...$roles, 'ROLE_USER']);
+            $plain = $form->get('plainPassword')->getData();
+            $user->setPassword($passwordHasher->hashPassword($user, $plain));
+            // анхдагч роль
+            if (method_exists($user, 'setRoles') && empty($user->getRoles())) {
+                $user->setRoles(['ROLE_USER']);
             }
 
             $em->persist($user);
             $em->flush();
 
-            $this->addFlash('success', 'Бүртгэл амжилттай. Одоо нэвтэрч орно уу.');
+            $this->addFlash('success', 'Амжилттай бүртгэгдлээ. Одоо нэвтэрч орно уу.');
             return $this->redirectToRoute('app_login');
         }
 
+        // ЭНД form->createView()-г template-д "form" нэрээр дамжуулж байна
         return $this->render('security/register.html.twig', [
-            'registrationForm' => $form,
+            'form' => $form->createView(),
         ]);
     }
 }
