@@ -7,32 +7,44 @@ use App\Entity\User;
 use App\Form\RegistrationFormType;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\{Request, Response};
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Annotation\Route;
 
 final class RegistrationController extends AbstractController
 {
     #[Route('/register', name: 'app_register', methods: ['GET','POST'])]
-    public function __invoke(
+    public function register(
         Request $request,
         EntityManagerInterface $em,
         UserPasswordHasherInterface $hasher
     ): Response {
         $user = new User();
+
         $form = $this->createForm(RegistrationFormType::class, $user);
         $form->handleRequest($request);
 
+        // Алдааг ил тод харуулахын тулд form errors-ийг stdout руу логлоно
+        if ($form->isSubmitted() && !$form->isValid()) {
+            $errs = [];
+            foreach ($form->getErrors(true, true) as $e) {
+                $errs[] = $e->getMessage();
+            }
+            if ($errs) {
+                error_log('[register] form errors: ' . implode(' | ', $errs));
+            }
+        }
+
         if ($form->isSubmitted() && $form->isValid()) {
-            // Нууц үг хэшлэнэ
-            $hashed = $hasher->hashPassword(
-                $user,
-                (string) $form->get('plainPassword')->getData()
-            );
-            $user->setPassword($hashed);
-            // Role-ыг баталгаажуулна (анхдагчаар ROLE_USER байгаа ч дахин тогтоов)
-            $user->setRoles(['ROLE_USER']);
+            // Нууц үг хешлэх
+            $plain = (string)$form->get('plainPassword')->getData();
+            $user->setPassword($hasher->hashPassword($user, $plain));
+
+            // Анхдагч ROLE_USER (entity constructor-д байгаа ч баталгаажуулж үлдээнэ)
+            $roles = $user->getRoles();
+            if (!in_array('ROLE_USER', $roles, true)) {
+                $user->setRoles([...$roles, 'ROLE_USER']);
+            }
 
             $em->persist($user);
             $em->flush();
@@ -41,8 +53,8 @@ final class RegistrationController extends AbstractController
             return $this->redirectToRoute('app_login');
         }
 
-        return $this->render('registration/register.html.twig', [
-            'registrationForm' => $form->createView(),
+        return $this->render('security/register.html.twig', [
+            'registrationForm' => $form,
         ]);
     }
 }

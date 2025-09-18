@@ -1,0 +1,14 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Бүртгүүлэх{% endblock %}
+
+{% block body %}
+  <h2>Шинэ хэрэглэгч бүртгүүлэх</h2>
+
+  {{ form_start(registrationForm) }}
+    {{ form_row(registrationForm.email) }}
+    {{ form_row(registrationForm.plainPassword, { label: 'Нууц үг' }) }}
+    <button type="submit">Бүртгүүлэх</button>
+    {{ form_rest(registrationForm) }} {# CSRF токеныг баталгаатай оруулах #}
+  {{ form_end(registrationForm) }}
+{% endblock %}
