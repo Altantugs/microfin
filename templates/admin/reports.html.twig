@@ -1,37 +1,39 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Admin — Reports{% endblock %}
+{% block title %}Админ – Тайлан{% endblock %}
 
 {% block body %}
-  <h2>Тайлан (хэрэглэгчээр)</h2>
-  <p style="margin:8px 0;"><a href="{{ path('admin_dashboard') }}">← Буцах</a></p>
+  <h2 style="margin:0 0 16px;">Хэрэглэгч бүрийн тайлан</h2>
 
-  <table style="width:100%; border-collapse:collapse;">
-    <thead>
-      <tr style="text-align:left; border-bottom:1px solid #eee;">
-        <th style="padding:8px;">Имэйл</th>
-        <th style="padding:8px;">Гүйлгээ (тоо)</th>
-        <th style="padding:8px;">Орлого (нийт)</th>
-        <th style="padding:8px;">Зарлага (нийт)</th>
-        <th style="padding:8px;">Цэвэр дүн</th>
+  <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse; width:100%;">
+    <thead style="background:#f9fafb;">
+      <tr>
+        <th style="text-align:left;">Имэйл</th>
+        <th style="text-align:right;">Гүйлгээ (тоо)</th>
+        <th style="text-align:right;">Орлого</th>
+        <th style="text-align:right;">Зарлага</th>
+        <th style="text-align:right;">Цэвэр дүн</th>
       </tr>
     </thead>
     <tbody>
-      {% for r in rows %}
-        {% set income = (r.incomeTotal ?? 0)|float %}
-        {% set expense = (r.expenseTotal ?? 0)|float %}
-        {% set net = income + expense %}
-        <tr style="border-bottom:1px solid #f3f4f6;">
-          <td style="padding:8px;">{{ r.email }}</td>
-          <td style="padding:8px;">{{ r.txCount }}</td>
-          <td style="padding:8px;">{{ income|number_format(2, '.', ',') }}</td>
-          <td style="padding:8px;">{{ expense|number_format(2, '.', ',') }}</td>
-          <td style="padding:8px; font-weight:600;">
+      {% for row in rows %}
+        {% set income  = (row.incomeTotal  is defined and row.incomeTotal  is not null) ? row.incomeTotal  : 0 %}
+        {% set expense = (row.expenseTotal is defined and row.expenseTotal is not null) ? row.expenseTotal : 0 %}
+        {% set net = income + expense %} {# expense нь сөрөг утгатай хадгалагдсан #}
+
+        <tr>
+          <td>{{ row.email }}</td>
+          <td style="text-align:right;">{{ row.txCount|default(0) }}</td>
+          <td style="text-align:right;">{{ income|number_format(2, '.', ',') }}</td>
+          <td style="text-align:right;">{{ expense|number_format(2, '.', ',') }}</td>
+          <td style="text-align:right; font-weight:600;">
             {{ net|number_format(2, '.', ',') }}
           </td>
         </tr>
       {% else %}
-        <tr><td colspan="5" style="padding:8px; opacity:.7;">Мэдээлэл алга.</td></tr>
+        <tr>
+          <td colspan="5" style="text-align:center; padding:12px;">Өгөгдөл алга.</td>
+        </tr>
       {% endfor %}
     </tbody>
   </table>
