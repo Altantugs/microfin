@@ -1,6 +1,7 @@
+# config/packages/security.yaml
 security:
   role_hierarchy:
-    ROLE_ADMIN: [ROLE_USER, ROLE_ALLOWED_TO_SWITCH]
+    ROLE_ADMIN: [ROLE_USER]
 
   password_hashers:
     App\Entity\User: 'auto'
@@ -20,12 +21,10 @@ security:
       lazy: true
       provider: app_user_provider
 
-      # 🔒 Login throttling — зөв limiter service ID
+      # ✅ Login throttling – Дотоод тохиргоог ашиглана (service заах шаардлагагүй)
       login_throttling:
-        limiter: request_rate_limiter.login
-
-      # 👤 Impersonation (админ бусдад түр орж шалгах)
-      switch_user: true
+        max_attempts: 5
+        interval: '1 minute'
 
       form_login:
         login_path: app_login
@@ -36,7 +35,7 @@ security:
 
       remember_me:
         secret: '%kernel.secret%'
-        lifetime: 1209600   # 14 хоног
+        lifetime: 1209600
         path: /
 
   access_control:
