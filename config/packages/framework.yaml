@@ -19,10 +19,6 @@ framework:
   router:
     utf8: true
 
-  # Translator (сонголт)
-  translator:
-    fallbacks: ['en']
-
   http_method_override: false
 
 when@test:
