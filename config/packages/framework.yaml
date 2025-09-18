@@ -2,22 +2,18 @@
 framework:
   secret: '%env(APP_SECRET)%'
 
-  # CSRF хамгаалалт (form_login, бүртгэлд)
   csrf_protection: true
 
-  # Session (CSRF/Form/Login-д хэрэгтэй) — тогтмол save_path заая
+  # Session: PDO handler -> Postgres руу хадгална
   session:
-    handler_id: null
-    save_path: '%kernel.project_dir%/var/sessions/%kernel.environment%'
-    name: MICROFINSESSID
+    handler_id: Symfony\Component\HttpFoundation\Session\Storage\Handler\PdoSessionHandler
     cookie_secure: auto
     cookie_samesite: lax
     cookie_httponly: true
+    name: MICROFINSESSID
 
-  # Form component
   form: true
 
-  # Router
   router:
     utf8: true
 
