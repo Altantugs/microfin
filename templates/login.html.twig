@@ -1,0 +1,40 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Нэвтрэх{% endblock %}
+
+{% block body %}
+  <div style="max-width:420px;margin:2rem auto;">
+    <h2 style="margin:0 0 1rem;">Нэвтрэх</h2>
+
+    {% if error %}
+      <div style="padding:.75rem 1rem;border:1px solid #fca5a5;background:#fee2e2;margin-bottom:1rem;">
+        {{ error.messageKey|trans(error.messageData, 'security') }}
+      </div>
+    {% endif %}
+
+    <form method="post" action="{{ path('app_login') }}" style="display:grid;gap:.75rem;">
+      <label>
+        И-мэйл
+        <input type="email" name="_username" value="{{ last_username }}" required
+               style="width:100%;padding:.5rem;border:1px solid #ddd;border-radius:6px;">
+      </label>
+
+      <label>
+        Нууц үг
+        <input type="password" name="_password" required
+               style="width:100%;padding:.5rem;border:1px solid #ddd;border-radius:6px;">
+      </label>
+
+      {# CSRF хамгаалалт (security.yaml дээр enable_csrf: true) #}
+      <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+      <button type="submit" style="padding:.5rem 1rem;border:1px solid #222;border-radius:6px;">
+        Нэвтрэх
+      </button>
+    </form>
+
+    <p style="margin-top:1rem;">
+      Бүртгэлгүй юу? <a href="{{ path('app_register') }}">Бүртгүүлэх</a>
+    </p>
+  </div>
+{% endblock %}
