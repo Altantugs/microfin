@@ -1,12 +1,20 @@
+{# templates/security/register.html.twig #}
 {% extends 'base.html.twig' %}
 
-{% block title %}Бүртгүүлэх{% endblock %}
+{% block title %}Register · Microfin{% endblock %}
 
 {% block body %}
   <h2 style="margin:0 0 12px;">Бүртгүүлэх</h2>
 
-  {# form helper нь _token-ийг автоматаар зөв нэрээр (registration_form[_token]) шургуулна #}
+  {# Глобал формын алдааг тод харуулна #}
+  {% if form_errors(form) is not empty %}
+    <div style="padding:8px 12px;margin:8px 0;border:1px solid #fca5a5;background:#fef2f2;">
+      {{ form_errors(form) }}
+    </div>
+  {% endif %}
+
   {{ form_start(form, { attr: { autocomplete: 'off', novalidate: 'novalidate' } }) }}
+
     {{ form_row(form.email, {
       label: 'Имэйл',
       attr: { placeholder: 'name@example.com' }
