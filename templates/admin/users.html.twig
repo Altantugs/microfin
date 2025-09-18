@@ -1,31 +1,71 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Admin — Users{% endblock %}
+{% block title %}Админ — Хэрэглэгчид{% endblock %}
 
 {% block body %}
-  <h2>Хэрэглэгчид</h2>
-  <p style="margin:8px 0;"><a href="{{ path('admin_dashboard') }}">← Буцах</a></p>
+  <h2 style="margin:0 0 12px;">Хэрэглэгчдийн жагсаалт</h2>
 
-  <table style="width:100%; border-collapse:collapse;">
+  <table style="width:100%;border-collapse:collapse;">
     <thead>
-      <tr style="text-align:left; border-bottom:1px solid #eee;">
+      <tr style="text-align:left;border-bottom:1px solid #e5e7eb;">
         <th style="padding:8px;">Имэйл</th>
-        <th style="padding:8px;">Roles</th>
+        <th style="padding:8px;">Эрхүүд</th>
         <th style="padding:8px;">Статус</th>
-        <th style="padding:8px;">Бүртгэгдсэн</th>
+        <th style="padding:8px;">Үүссэн</th>
+        <th style="padding:8px;">Үйлдэл</th>
       </tr>
     </thead>
     <tbody>
-      {% for u in items %}
-        <tr style="border-bottom:1px solid #f3f4f6;">
-          <td style="padding:8px;">{{ u.email }}</td>
-          <td style="padding:8px;">{{ u.roles|join(', ') }}</td>
-          <td style="padding:8px;">{{ u.status }}</td>
-          <td style="padding:8px;">{{ u.createdAt|date('Y-m-d H:i') }}</td>
-        </tr>
-      {% else %}
-        <tr><td colspan="4" style="padding:8px; opacity:.7;">Хоосон.</td></tr>
-      {% endfor %}
+    {% for item in items %}
+      {% set isAdmin = 'ROLE_ADMIN' in item.roles %}
+      {% set isSelf  = app.user and app.user.userIdentifier == item.email %}
+      <tr style="border-bottom:1px solid #f3f4f6;">
+        <td style="padding:8px;">{{ item.email }}</td>
+        <td style="padding:8px;">{{ item.roles|join(', ') }}</td>
+        <td style="padding:8px;">
+          <span style="padding:2px 6px;border:1px solid #ddd;border-radius:6px;">
+            {{ item.status }}
+          </span>
+        </td>
+        <td style="padding:8px;">{{ item.createdAt|date('Y-m-d H:i') }}</td>
+        <td style="padding:8px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+          {# Admin эрх олгох/хасах #}
+          {% if isAdmin %}
+            <form method="post" action="{{ path('admin_user_revoke_admin', {id: item.id}) }}" style="display:inline;">
+              <input type="hidden" name="_token" value="{{ csrf_token('user_admin_' ~ item.id) }}">
+              <button type="submit" {{ isSelf ? 'disabled' }}>
+                Админ эрх хасах
+              </button>
+            </form>
+          {% else %}
+            <form method="post" action="{{ path('admin_user_grant_admin', {id: item.id}) }}" style="display:inline;">
+              <input type="hidden" name="_token" value="{{ csrf_token('user_admin_' ~ item.id) }}">
+              <button type="submit">
+                Админ эрх олгох
+              </button>
+            </form>
+          {% endif %}
+
+          {# Статус солих (өөрийгөө түгжихээс сэргийлнэ) #}
+          <form method="post" action="{{ path('admin_user_toggle_status', {id: item.id}) }}" style="display:inline;">
+            <input type="hidden" name="_token" value="{{ csrf_token('user_status_' ~ item.id) }}">
+            <button type="submit" {{ isSelf ? 'disabled' }}>
+              {{ item.status == 'ACTIVE' ? 'Block' : 'Unblock' }}
+            </button>
+          </form>
+
+          {# Имперсонаци (өөрийгөө биш бол) #}
+          {% if not isSelf %}
+            <a href="{{ path('admin_users', {'_switch_user': item.email}) }}"
+               style="font-size:12px;opacity:.85;text-decoration:none;border:1px solid #ddd;padding:4px 6px;border-radius:6px;">
+              Орох
+            </a>
+          {% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" style="padding:12px;opacity:.6;">Хоосон байна.</td></tr>
+    {% endfor %}
     </tbody>
   </table>
 {% endblock %}

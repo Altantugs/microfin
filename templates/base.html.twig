@@ -26,6 +26,21 @@
       <div style="display:flex;gap:12px;align-items:center;">
         {% if app.user %}
           <span style="opacity:.8;">{{ app.user.userIdentifier }}</span>
+          {% if is_granted('ROLE_PREVIOUS_ADMIN') %}
+            <span style="font-size:12px;background:#fde68a;padding:2px 6px;border-radius:8px;">impersonating</span>
+          {% endif %}
+
+          {# Админуудад: Impersonate form + Exit линк #}
+          {% if is_granted('ROLE_ADMIN') %}
+            <form method="get" action="{{ path('admin_dashboard') }}" style="display:inline-flex;gap:6px;align-items:center;">
+              <input type="text" name="_switch_user" placeholder="impersonate email" style="padding:4px 6px;">
+              <button type="submit">Switch</button>
+            </form>
+            {% if is_granted('ROLE_PREVIOUS_ADMIN') %}
+              <a href="{{ path('admin_dashboard') }}?_switch_user=_exit" style="text-decoration:none;">Exit</a>
+            {% endif %}
+          {% endif %}
+
           <a href="{{ path('app_logout') }}" style="text-decoration:none;">Гарах</a>
         {% else %}
           <a href="{{ path('app_login') }}" style="text-decoration:none;">Нэвтрэх</a>

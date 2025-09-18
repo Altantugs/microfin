@@ -20,11 +20,33 @@ security:
     main:
       lazy: true
       provider: app_user_provider
+
+      # Нэвтрэх форм
       form_login:
         login_path: app_login
         check_path: app_login
+        enable_csrf: true
+
+      # Гарах
       logout:
         path: app_logout
+
+      # Админд зориулсан импёрсонаци (өөр хэрэглэгчээр түр орж шалгах)
+      switch_user:
+        parameter: _switch_user
+        role: ROLE_ADMIN
+
+      # Нэвтрэх оролдлогын хязгаарлалт (бот/бийд хамгаалалт)
+      login_throttling:
+        max_attempts: 5
+        interval: '1 minute'
+
+      # (Сонголт) Намайг сана — 2 долоо хоног
+      remember_me:
+        secret: '%env(APP_SECRET)%'
+        lifetime: 1209600   # 14 days
+        path: '/'
+        always_remember_me: false
 
   access_control:
     # Нээлттэй хуудаснууд
