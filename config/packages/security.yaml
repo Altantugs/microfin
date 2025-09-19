@@ -22,10 +22,13 @@ security:
       lazy: true
       provider: app_user_provider
 
-      # ✅ Login throttling — RateLimiter суусан тул дотоод limiter-ийг ашиглана
+      # 🚦 Нэвтрэлтийг хязгаарлах (rate limit)
       login_throttling:
         max_attempts: 5
         interval: '1 minute'
+
+      # ❗ Блоклогдсон / хугацаа дууссан хэрэглэгчийг хориглох шалгагч
+      user_checker: App\Security\UserChecker
 
       form_login:
         login_path: app_login
