@@ -41,6 +41,11 @@
             {% endif %}
           {% endif %}
 
+          {# --- Profile цэс: нууц үг / имэйл солих --- #}
+          <span aria-hidden="true" style="opacity:.5;">|</span>
+          <a href="/profile/password" style="text-decoration:none;">Change password</a>
+          <a href="/profile/email" style="text-decoration:none;">Change email</a>
+
           <a href="{{ path('app_logout') }}" style="text-decoration:none;">Гарах</a>
         {% else %}
           <a href="{{ path('app_login') }}" style="text-decoration:none;">Нэвтрэх</a>

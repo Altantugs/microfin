@@ -1,0 +1,16 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Профайл{% endblock %}
+
+{% block body %}
+  <h2 style="margin:0 0 12px;">Профайл</h2>
+
+  <div style="display:flex;gap:16px;flex-wrap:wrap;">
+    <a href="{{ path('profile_password') }}" style="text-decoration:none;border:1px solid #ddd;padding:8px 12px;border-radius:8px;">
+      Нууц үг солих
+    </a>
+    <a href="{{ path('profile_email') }}" style="text-decoration:none;border:1px solid #ddd;padding:8px 12px;border-radius:8px;">
+      Имэйл солих
+    </a>
+  </div>
+{% endblock %}
