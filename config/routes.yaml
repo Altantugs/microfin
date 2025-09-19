@@ -32,20 +32,18 @@ app_home:
   controller: Symfony\Bundle\FrameworkBundle\Controller\RedirectController
   defaults: { route: bank_reports_home, permanent: false }
 
+# ⬇️ Дансны хуулгын ROUTE-уудыг жинхэнэ Controller action руу холбоно
 bank_reports_home:
   path: /app/reports/bank
-  controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
-  defaults: { template: 'reports.html.twig' }
+  controller: App\Controller\ReportController::index
 
 bank_reports_import:
   path: /app/reports/bank/import
-  controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
-  defaults: { template: 'upload.html.twig' }
+  controller: App\Controller\ReportController::upload
 
 bank_reports_prepare:
   path: /app/reports/bank/prepare
-  controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
-  defaults: { template: 'summary.html.twig' }
+  controller: App\Controller\ReportController::summary
 
 # ⬇️ Hook to real ProfileController paths
 app_profile_home:
