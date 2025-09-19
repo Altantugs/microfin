@@ -5,6 +5,21 @@
 {% block body %}
   <h2 style="margin:0 0 12px;">Хэрэглэгчдийн жагсаалт</h2>
 
+  {# — Хайлт — #}
+  <form method="get" action="{{ path('admin_users') }}" style="display:flex;gap:8px;align-items:center;margin:8px 0 16px;">
+    <input type="text" name="q" value="{{ q|default('') }}" placeholder="Имэйлээр хайх…" style="padding:6px 8px;flex:1;">
+    <button type="submit">Хайх</button>
+    {% if q is defined and q %}
+      <a href="{{ path('admin_users') }}" style="text-decoration:none;opacity:.8;">Цэвэрлэх</a>
+    {% endif %}
+  </form>
+
+  {# — Статистик — #}
+  <div style="margin:6px 0 10px;opacity:.8;">
+    Нийт: {{ total|default(items|length) }} хэрэглэгч
+    {% if q is defined and q %} (хайлтаар) {% endif %}
+  </div>
+
   <table style="width:100%;border-collapse:collapse;">
     <thead>
       <tr style="text-align:left;border-bottom:1px solid #e5e7eb;">
@@ -29,16 +44,17 @@
         </td>
         <td style="padding:8px;">{{ item.createdAt|date('Y-m-d H:i') }}</td>
         <td style="padding:8px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+
           {# Admin эрх олгох/хасах #}
           {% if isAdmin %}
-            <form method="post" action="{{ path('admin_user_revoke_admin', {id: item.id}) }}" style="display:inline;">
+            <form method="post" action="{{ path('admin_user_revoke_admin', {id: item.id, q: q|default(''), page: page|default(1)}) }}" style="display:inline;">
               <input type="hidden" name="_token" value="{{ csrf_token('user_admin_' ~ item.id) }}">
               <button type="submit" {{ isSelf ? 'disabled' }}>
                 Админ эрх хасах
               </button>
             </form>
           {% else %}
-            <form method="post" action="{{ path('admin_user_grant_admin', {id: item.id}) }}" style="display:inline;">
+            <form method="post" action="{{ path('admin_user_grant_admin', {id: item.id, q: q|default(''), page: page|default(1)}) }}" style="display:inline;">
               <input type="hidden" name="_token" value="{{ csrf_token('user_admin_' ~ item.id) }}">
               <button type="submit">
                 Админ эрх олгох
@@ -47,7 +63,7 @@
           {% endif %}
 
           {# Статус солих (өөрийгөө түгжихээс сэргийлнэ) #}
-          <form method="post" action="{{ path('admin_user_toggle_status', {id: item.id}) }}" style="display:inline;">
+          <form method="post" action="{{ path('admin_user_toggle_status', {id: item.id, q: q|default(''), page: page|default(1)}) }}" style="display:inline;">
             <input type="hidden" name="_token" value="{{ csrf_token('user_status_' ~ item.id) }}">
             <button type="submit" {{ isSelf ? 'disabled' }}>
               {{ item.status == 'ACTIVE' ? 'Block' : 'Unblock' }}
@@ -56,7 +72,7 @@
 
           {# Имперсонаци (өөрийгөө биш бол) #}
           {% if not isSelf %}
-            <a href="{{ path('admin_users', {'_switch_user': item.email}) }}"
+            <a href="{{ path('admin_users', {'_switch_user': item.email, q: q|default(''), page: page|default(1)}) }}"
                style="font-size:12px;opacity:.85;text-decoration:none;border:1px solid #ddd;padding:4px 6px;border-radius:6px;">
               Орох
             </a>
@@ -68,4 +84,20 @@
     {% endfor %}
     </tbody>
   </table>
+
+  {# — Хуудаслалт — #}
+  {% if totalPages|default(1) > 1 %}
+    <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:12px;">
+      {% set cur = page|default(1) %}
+      <a href="{{ path('admin_users', {q: q|default(''), page: cur-1}) }}"
+         style="text-decoration:none;{{ cur <= 1 ? 'pointer-events:none;opacity:.5;' }}"
+      >Өмнөх</a>
+
+      <span style="opacity:.8;">{{ cur }} / {{ totalPages }}</span>
+
+      <a href="{{ path('admin_users', {q: q|default(''), page: cur+1}) }}"
+         style="text-decoration:none;{{ cur >= totalPages ? 'pointer-events:none;opacity:.5;' }}"
+      >Дараах</a>
+    </div>
+  {% endif %}
 {% endblock %}

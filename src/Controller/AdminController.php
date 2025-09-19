@@ -28,12 +28,45 @@ final class AdminController extends AbstractController
     }
 
     #[Route('/users', name: 'users', methods: ['GET'])]
-    public function users(UserRepository $users): Response
+    public function users(Request $request, EntityManagerInterface $em): Response
     {
         $this->denyAccessUnlessGranted('ROLE_ADMIN');
 
+        // Хайлт + хуудаслалт
+        $q      = trim((string)$request->query->get('q', ''));
+        $page   = max(1, (int)$request->query->get('page', 1));
+        $limit  = 10;
+        $offset = ($page - 1) * $limit;
+
+        $qb = $em->createQueryBuilder()
+            ->from(User::class, 'u')
+            ->select('u')
+            ->orderBy('u.createdAt', 'DESC');
+
+        if ($q !== '') {
+            $qb->andWhere('LOWER(u.email) LIKE :q')
+               ->setParameter('q', '%'.mb_strtolower($q).'%');
+        }
+
+        // Нийт тоо
+        $countQb = clone $qb;
+        $countQb->select('COUNT(u.id)');
+        $total = (int)$countQb->getQuery()->getSingleScalarResult();
+
+        // Өгөгдөл
+        $items = $qb->setFirstResult($offset)
+                    ->setMaxResults($limit)
+                    ->getQuery()
+                    ->getResult();
+
+        $totalPages = (int)ceil(max(1, $total) / $limit);
+
         return $this->render('admin/users.html.twig', [
-            'items' => $users->findBy([], ['createdAt' => 'DESC']),
+            'items'      => $items,
+            'q'          => $q,
+            'page'       => $page,
+            'total'      => $total,
+            'totalPages' => $totalPages,
         ]);
     }
 
@@ -75,12 +108,17 @@ final class AdminController extends AbstractController
             $user->setRoles(array_values(array_unique($roles)));
             $em->flush();
             $this->addFlash('success', sprintf('Admin эрх олголоо: %s', $user->getEmail()));
+        } else {
+            $this->addFlash('success', sprintf('Хэрэглэгч аль хэдийн админ: %s', $user->getEmail()));
         }
 
-        return $this->redirectToRoute('admin_users');
+        return $this->redirectToRoute('admin_users', [
+            'q'    => $request->query->get('q'),
+            'page' => $request->query->getInt('page', 1),
+        ]);
     }
 
-    // === ADMIN эрх хасах ===
+    // === ADMIN эрх хасах (өөрийгөө хасахаас хамгаална) ===
     #[Route('/users/{id}/revoke-admin', name: 'user_revoke_admin', methods: ['POST'])]
     public function revokeAdmin(User $user, Request $request, EntityManagerInterface $em): Response
     {
@@ -88,6 +126,15 @@ final class AdminController extends AbstractController
 
         if (!$this->isCsrfTokenValid('user_admin_'.$user->getId(), $request->request->get('_token'))) {
             throw $this->createAccessDeniedException('Bad CSRF');
+        }
+
+        // Сервер талын хамгаалалт (өөрийгөө админ эрхээс салгахгүй)
+        if ($this->getUser() instanceof User && $this->getUser()->getId() === $user->getId()) {
+            $this->addFlash('error', 'Өөрийн админ эрхийг хасах боломжгүй.');
+            return $this->redirectToRoute('admin_users', [
+                'q'    => $request->query->get('q'),
+                'page' => $request->query->getInt('page', 1),
+            ]);
         }
 
         $roles = array_filter($user->getRoles(), fn($r) => $r !== 'ROLE_ADMIN');
@@ -99,10 +146,13 @@ final class AdminController extends AbstractController
 
         $this->addFlash('success', sprintf('Admin эрх хаслаа: %s', $user->getEmail()));
 
-        return $this->redirectToRoute('admin_users');
+        return $this->redirectToRoute('admin_users', [
+            'q'    => $request->query->get('q'),
+            'page' => $request->query->getInt('page', 1),
+        ]);
     }
 
-    // === Статус солих (ACTIVE/BLOCKED) ===
+    // === Статус солих (ACTIVE/BLOCKED) — өөрийгөө түгжихээс хамгаална ===
     #[Route('/users/{id}/toggle-status', name: 'user_toggle_status', methods: ['POST'])]
     public function toggleStatus(User $user, Request $request, EntityManagerInterface $em): Response
     {
@@ -112,11 +162,22 @@ final class AdminController extends AbstractController
             throw $this->createAccessDeniedException('Bad CSRF');
         }
 
+        if ($this->getUser() instanceof User && $this->getUser()->getId() === $user->getId()) {
+            $this->addFlash('error', 'Өөрийгөө түгжих боломжгүй.');
+            return $this->redirectToRoute('admin_users', [
+                'q'    => $request->query->get('q'),
+                'page' => $request->query->getInt('page', 1),
+            ]);
+        }
+
         $user->setStatus($user->getStatus() === 'ACTIVE' ? 'BLOCKED' : 'ACTIVE');
         $em->flush();
 
         $this->addFlash('success', sprintf('Статус шинэчлэгдлээ (%s): %s', $user->getStatus(), $user->getEmail()));
 
-        return $this->redirectToRoute('admin_users');
+        return $this->redirectToRoute('admin_users', [
+            'q'    => $request->query->get('q'),
+            'page' => $request->query->getInt('page', 1),
+        ]);
     }
 }
