@@ -1,7 +1,9 @@
+# config/routes.yaml — PRODUCTION-READY
 controllers:
   resource: ../src/Controller/
   type: attribute
 
+# Public pages (no auth)
 public_home:
   path: /
   controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
@@ -27,11 +29,13 @@ public_contact:
   controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
   defaults: { template: 'public/contact.html.twig' }
 
+# App home → Bank reports (ONLY ONE app_home!)
 app_home:
   path: /app
   controller: Symfony\Bundle\FrameworkBundle\Controller\RedirectController
   defaults: { route: bank_reports_home, permanent: false }
 
+# Bank reports (reuse existing templates)
 bank_reports_home:
   path: /app/reports/bank
   controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
@@ -47,32 +51,35 @@ bank_reports_prepare:
   controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
   defaults: { template: 'summary.html.twig' }
 
-# ⬇️ Hook to real ProfileController paths
+# Profile (temporary templates)
 app_profile_home:
   path: /app/profile
-  controller: Symfony\Bundle\FrameworkBundle\Controller\RedirectController
-  defaults: { path: /profile, permanent: false }
+  controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
+  defaults: { template: 'users.html.twig' }
 
 app_profile_email:
   path: /app/profile/security/email
-  controller: Symfony\Bundle\FrameworkBundle\Controller\RedirectController
-  defaults: { path: /profile/change-email, permanent: false }
+  controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
+  defaults: { template: 'change_email.html.twig' }
 
 app_profile_password:
   path: /app/profile/security/password
-  controller: Symfony\Bundle\FrameworkBundle\Controller\RedirectController
-  defaults: { path: /profile/change-password, permanent: false }
+  controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
+  defaults: { template: 'change_password.html.twig' }
 
+# Reports index → redirect to bank reports
 app_reports_home:
   path: /app/reports
   controller: Symfony\Bundle\FrameworkBundle\Controller\RedirectController
   defaults: { route: bank_reports_home, permanent: false }
 
+# Legacy /reports → new bank reports
 legacy_reports_redirect:
   path: /reports
   controller: Symfony\Bundle\FrameworkBundle\Controller\RedirectController
   defaults: { route: bank_reports_home, permanent: false }
 
+# EBARIMT routes
 app_reports_ebarimt_home:
   path: /app/reports/ebarimt
   controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController

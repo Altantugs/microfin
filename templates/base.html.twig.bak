@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Microfin{% endblock %}</title>
+  </head>
+  <body style="font-family:system-ui;max-width:900px;margin:32px auto;padding:0 16px;">
+
+    {# === NAVBAR === #}
+    <nav style="display:flex;gap:12px;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #eee;margin-bottom:16px;">
+      <div style="display:flex;gap:12px;align-items:center;">
+        <a href="/" style="text-decoration:none;">Home</a>
+        <a href="/healthz" style="text-decoration:none;">Health</a>
+
+        {% if app.user %}
+          <a href="{{ path('upload_excel') }}" style="text-decoration:none;">Upload Excel</a>
+          <a href="{{ path('report_summary') }}" style="text-decoration:none;">Report</a>
+
+          {# Зөвхөн админуудад ADMIN цэс #}
+          {% if is_granted('ROLE_ADMIN') %}
+            <a href="{{ path('admin_dashboard') }}" style="text-decoration:none;font-weight:600;">ADMIN</a>
+          {% endif %}
+        {% endif %}
+      </div>
+
+      <div style="display:flex;gap:12px;align-items:center;">
+        {% if app.user %}
+          <span style="opacity:.8;">{{ app.user.userIdentifier }}</span>
+          {% if is_granted('ROLE_PREVIOUS_ADMIN') %}
+            <span style="font-size:12px;background:#fde68a;padding:2px 6px;border-radius:8px;">impersonating</span>
+          {% endif %}
+
+          {# Админуудад: Impersonate form + Exit линк #}
+          {% if is_granted('ROLE_ADMIN') %}
+            <form method="get" action="{{ path('admin_dashboard') }}" style="display:inline-flex;gap:6px;align-items:center;">
+              <input type="text" name="_switch_user" placeholder="impersonate email" style="padding:4px 6px;">
+              <button type="submit">Switch</button>
+            </form>
+            {% if is_granted('ROLE_PREVIOUS_ADMIN') %}
+              <a href="{{ path('admin_dashboard') }}?_switch_user=_exit" style="text-decoration:none;">Exit</a>
+            {% endif %}
+          {% endif %}
+
+          {# --- Profile цэс: нууц үг / имэйл солих --- #}
+          <span aria-hidden="true" style="opacity:.5;">|</span>
+          <a href="/profile/password" style="text-decoration:none;">Change password</a>
+          <a href="/profile/email" style="text-decoration:none;">Change email</a>
+
+          <a href="{{ path('app_logout') }}" style="text-decoration:none;">Гарах</a>
+        {% else %}
+          <a href="{{ path('app_login') }}" style="text-decoration:none;">Нэвтрэх</a>
+          <a href="{{ path('app_register') }}" style="text-decoration:none;">Бүртгүүлэх</a>
+        {% endif %}
+      </div>
+    </nav>
+
+    <h1 style="margin:0 0 16px;">Microfin — Welcome</h1>
+
+    {# Flash messages #}
+    {% for label, messages in app.flashes %}
+      {% for message in messages %}
+        <div style="padding:8px 12px;margin:8px 0;border:1px solid #ddd;border-left:4px solid {{ label == 'success' ? '#22c55e' : '#ef4444' }};">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endfor %}
+
+    {% block body %}{% endblock %}
+  </body>
+</html>
