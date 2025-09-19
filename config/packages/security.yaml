@@ -1,5 +1,6 @@
 # config/packages/security.yaml
 security:
+  # Админ нь хэрэглэгчийн бүх эрхийг автоматаар агуулна
   role_hierarchy:
     ROLE_ADMIN: [ROLE_USER]
 
@@ -21,7 +22,7 @@ security:
       lazy: true
       provider: app_user_provider
 
-      # ✅ Login throttling – Дотоод тохиргоог ашиглана (service заах шаардлагагүй)
+      # ✅ Login throttling — RateLimiter суусан тул дотоод limiter-ийг ашиглана
       login_throttling:
         max_attempts: 5
         interval: '1 minute'
@@ -33,14 +34,25 @@ security:
       logout:
         path: app_logout
 
+      # ✅ Remember-me (14 хоног)
       remember_me:
         secret: '%kernel.secret%'
         lifetime: 1209600
         path: /
 
+      # ✅ Impersonation (_switch_user query param)
+      switch_user:
+        role: ROLE_ADMIN
+        parameter: _switch_user
+
   access_control:
+    # Нээлттэй хуудаснууд
     - { path: ^/login,    roles: PUBLIC_ACCESS }
     - { path: ^/register, roles: PUBLIC_ACCESS }
     - { path: ^/assets,   roles: PUBLIC_ACCESS }
+
+    # Админ хэсэг — зөвхөн ROLE_ADMIN
     - { path: ^/admin,    roles: ROLE_ADMIN }
+
+    # Бусад бүх зам — нэвтэрсэн хэрэглэгч
     - { path: ^/,         roles: ROLE_USER }
