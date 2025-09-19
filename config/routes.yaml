@@ -29,7 +29,7 @@ public_contact:
   controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
   defaults: { template: 'public/contact.html.twig' }
 
-# App home → Bank reports
+# App home → Bank reports (ONLY ONE app_home!)
 app_home:
   path: /app
   controller: Symfony\Bundle\FrameworkBundle\Controller\RedirectController
@@ -73,6 +73,13 @@ app_reports_home:
   controller: Symfony\Bundle\FrameworkBundle\Controller\RedirectController
   defaults: { route: bank_reports_home, permanent: false }
 
+# Legacy /reports → new bank reports
+legacy_reports_redirect:
+  path: /reports
+  controller: Symfony\Bundle\FrameworkBundle\Controller\RedirectController
+  defaults: { route: bank_reports_home, permanent: false }
+
+# EBARIMT routes
 app_reports_ebarimt_home:
   path: /app/reports/ebarimt
   controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
@@ -92,17 +99,3 @@ app_reports_ebarimt_history:
   path: /app/reports/ebarimt/history
   controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
   defaults: { template: 'reports/ebarimt/history.html.twig' }
-
-legacy_reports_redirect:
-  path: /reports
-  controller: Symfony\Bundle\FrameworkBundle\Controller\RedirectController
-  defaults: { route: bank_reports_home, permanent: false }
-
-app_home:
-  path: /app
-  controller: Symfony\Bundle\FrameworkBundle\Controller\RedirectController
-  defaults: { route: bank_reports_home, permanent: false }
-app_home:
-  path: /app
-  controller: Symfony\Bundle\FrameworkBundle\Controller\RedirectController
-  defaults: { route: bank_reports_home, permanent: false }
