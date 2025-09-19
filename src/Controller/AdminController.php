@@ -23,7 +23,7 @@ final class AdminController extends AbstractController
 
         return $this->render('admin/index.html.twig', [
             'totalUsers' => $totalUsers,
-            'totalTx' => $totalTx,
+            'totalTx'    => $totalTx,
         ]);
     }
 
@@ -48,10 +48,10 @@ final class AdminController extends AbstractController
                ->setParameter('q', '%'.mb_strtolower($q).'%');
         }
 
-        // Нийт тоо
+        // Нийт тоо (ORDER BY-г арилгаж тоолно — PG grouping error fix)
         $countQb = clone $qb;
-        $countQb->select('COUNT(u.id)');
-        $total = (int)$countQb->getQuery()->getSingleScalarResult();
+        $countQb->resetDQLPart('orderBy');
+        $total = (int)$countQb->select('COUNT(u.id)')->getQuery()->getSingleScalarResult();
 
         // Өгөгдөл
         $items = $qb->setFirstResult($offset)
@@ -128,7 +128,6 @@ final class AdminController extends AbstractController
             throw $this->createAccessDeniedException('Bad CSRF');
         }
 
-        // Сервер талын хамгаалалт (өөрийгөө админ эрхээс салгахгүй)
         if ($this->getUser() instanceof User && $this->getUser()->getId() === $user->getId()) {
             $this->addFlash('error', 'Өөрийн админ эрхийг хасах боломжгүй.');
             return $this->redirectToRoute('admin_users', [
