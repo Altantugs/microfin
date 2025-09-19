@@ -49,13 +49,19 @@ security:
         parameter: _switch_user
 
   access_control:
-    # Нээлттэй хуудаснууд
-    - { path: ^/login,    roles: PUBLIC_ACCESS }
-    - { path: ^/register, roles: PUBLIC_ACCESS }
-    - { path: ^/assets,   roles: PUBLIC_ACCESS }
+    # 🔓 Healthcheck / static
+    - { path: ^/healthz$,  roles: PUBLIC_ACCESS }
+    - { path: ^/assets,    roles: PUBLIC_ACCESS }
 
-    # Админ хэсэг — зөвхөн ROLE_ADMIN
-    - { path: ^/admin,    roles: ROLE_ADMIN }
+    # 🔓 Auth хуудсууд
+    - { path: ^/login$,    roles: PUBLIC_ACCESS }
+    - { path: ^/register$, roles: PUBLIC_ACCESS }
 
-    # Бусад бүх зам — нэвтэрсэн хэрэглэгч
-    - { path: ^/,         roles: ROLE_USER }
+    # 🔓 Public сайт: Нүүр, Танилцуулга, Заавар, Үнэ, Холбоо барих
+    - { path: ^/(|intro|guide|pricing|contact)$, roles: PUBLIC_ACCESS }
+
+    # 🔐 Админ хэсэг
+    - { path: ^/admin,     roles: ROLE_ADMIN }
+
+    # 🔐 Апп хэсэг (нэвтэрсний дараах)
+    - { path: ^/app,       roles: ROLE_USER }

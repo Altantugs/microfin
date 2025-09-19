@@ -1,0 +1,9 @@
+{% if is_granted('ROLE_USER') %}
+<nav style="padding:10px 0; border-bottom:1px solid #eee; margin:12px 0;">
+  <a href="/app">Нүүр</a> |
+  <a href="/app/profile">Миний мэдээлэл</a> |
+  <a href="/app/reports/ebarimt">Тайлан бэлтгэх (EBARIMT)</a> |
+  <a href="/app/reports/bank">Тайлан бэлтгэх (Дансны хуулга)</a> |
+  <a href="/contact">Холбоо барих</a>
+</nav>
+{% endif %}
