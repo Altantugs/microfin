@@ -35,7 +35,8 @@ app_home:
 # ⬇️ Дансны хуулгын ROUTE-уудыг жинхэнэ Controller action руу холбоно
 bank_reports_home:
   path: /app/reports/bank
-  controller: App\Controller\ReportController::index
+  controller: App\Controller\ReportController::summary
+
 
 bank_reports_import:
   path: /app/reports/bank/import
