@@ -26,15 +26,19 @@ security:
         max_attempts: 5
         interval: '1 minute'
 
-      # Дахин нэвтрэх эрх хаагдсан эсэхийг шалгагч (танд байгаа класс)
+      # Танд байгаа хэрэглэгч шалгагч
       user_checker: App\Security\UserChecker
 
       form_login:
-        login_path: app_login      # таны LoginController-ийн route
+        login_path: app_login
         check_path: app_login
-        enable_csrf: true          # ✅ зөв түлхүүр (csrf хамгаалалт)
+        enable_csrf: true
         csrf_parameter: _csrf_token
         csrf_token_id: authenticate
+        username_parameter: email        # <input name="email">
+        password_parameter: password     # <input name="password">
+        use_forward: false
+        default_target_path: /app        # амжилттай нэвтэрсний дараах чиглэл
 
       logout:
         path: app_logout
@@ -59,7 +63,7 @@ security:
     - { path: ^/(|intro|guide|pricing|contact)$, roles: PUBLIC_ACCESS }
 
     # Admin
-    - { path: ^/admin,     roles: ROLE_ADMIN }
+    - { path: ^/admin, roles: ROLE_ADMIN }
 
     # App (authenticated)
-    - { path: ^/app,       roles: ROLE_USER }
+    - { path: ^/app, roles: ROLE_USER }
