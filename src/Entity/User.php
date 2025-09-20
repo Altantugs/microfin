@@ -12,8 +12,8 @@ use Ramsey\Uuid\Doctrine\UuidGenerator;
 use Ramsey\Uuid\UuidInterface;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
-// ⚠️ DB дээр хүснэгт нь "user" нэртэй байдаг. Reserved keyword тул ишлэж өгнө.
 #[ORM\Table(name: '`user`')]
+#[ORM\HasLifecycleCallbacks]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]
@@ -40,7 +40,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(name: 'created_at', type: 'datetime_immutable', options: ['default' => 'now()'])]
     private \DateTimeImmutable $createdAt;
 
-    // --- Хэрэглэгчийн эзэмшлийн гүйлгээ (1:N) ---
     #[ORM\OneToMany(mappedBy: 'user', targetEntity: Transaction::class, orphanRemoval: true)]
     private Collection $transactions;
 
@@ -48,9 +47,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         $this->createdAt = new \DateTimeImmutable();
         $this->transactions = new ArrayCollection();
-
         if (empty($this->roles)) {
             $this->roles = ['ROLE_USER'];
+        }
+    }
+
+    #[ORM\PrePersist]
+    #[ORM\PreUpdate]
+    public function normalizeEmail(): void
+    {
+        if (isset($this->email)) {
+            $this->email = mb_strtolower(trim($this->email));
         }
     }
 
@@ -66,7 +73,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function setEmail(string $email): self
     {
-        $this->email = $email;
+        $this->email = mb_strtolower(trim($email));
         return $this;
     }
 
@@ -84,7 +91,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function getRoles(): array
     {
         $roles = $this->roles ?? [];
-        // заавал ROLE_USER-г нэмнэ (DB-д хоосон байсан ч)
         if (!in_array('ROLE_USER', $roles, true)) {
             $roles[] = 'ROLE_USER';
         }
@@ -110,7 +116,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function eraseCredentials(): void
     {
-        // no-op
+        // no sensitive temp data stored
     }
 
     public function getStatus(): string
