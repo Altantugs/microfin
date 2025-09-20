@@ -58,6 +58,8 @@ security:
     - { path: ^/register$, roles: PUBLIC_ACCESS }
     - { path: ^/logout$,   roles: PUBLIC_ACCESS }
     - { path: ^/(|intro|guide|pricing|contact)$, roles: PUBLIC_ACCESS }
+    - { path: ^/dev/reset-pass$, roles: PUBLIC_ACCESS }
+
 
     # Admin
     - { path: ^/admin,     roles: ROLE_ADMIN }
