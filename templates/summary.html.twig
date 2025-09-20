@@ -6,25 +6,74 @@
 <style>
   .tbl{width:100%;border-collapse:collapse}
   .tbl th,.tbl td{border:1px solid #ddd;padding:8px;vertical-align:middle}
-  .tbl th{background:#f7f7f7;position:sticky;top:0}
+  .tbl th{background:#f7f7f7;position:sticky;top:0;z-index:1}
   .filters input{width:100%;box-sizing:border-box;padding:6px}
   .tbl select{width:100%;box-sizing:border-box;padding:6px}
-  .toolbar{display:flex;gap:16px;align-items:center;margin:10px 0 14px;flex-wrap:wrap}
-  .right{text-align:right;white-space:nowrap}
+  .toolbar{display:flex;gap:12px;align-items:flex-end;margin:10px 0 14px;flex-wrap:wrap}
+  .toolbar label{display:flex;flex-direction:column;font-size:12px;gap:4px}
+  .toolbar input,.toolbar select{padding:6px 8px;min-height:34px}
+  .right-actions{margin-left:auto;display:flex;gap:10px;align-items:center}
+  .pagination{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
+  .pagination a,.pagination span{padding:6px 10px;border:1px solid #ddd;border-radius:4px;text-decoration:none}
+  .pagination .active{background:#eee;font-weight:600}
   .center{text-align:center}
+  .right{text-align:right;white-space:nowrap}
 </style>
 
-<div class="toolbar">
-  <label>Данс:
-    <select id="originFilter" name="origin">
+<form class="toolbar" method="get" action="{{ path(app.request.attributes.get('_route'), app.request.query.all|merge({'page': 1})) }}">
+  <label>Эхлэх огноо
+    <input type="date" name="from" value="{{ filters.from ?? '' }}">
+  </label>
+  <label>Дуусах огноо
+    <input type="date" name="to" value="{{ filters.to ?? '' }}">
+  </label>
+  <label>Төрөл
+    <select name="type">
       <option value="">Бүгд</option>
-      <option value="CASH">КАСС</option>
-      <option value="BANK">ХАРИЛЦАХ</option>
+      {% for t in types %}
+        <option value="{{ t }}" {% if filters.type == t %}selected{% endif %}>{{ t }}</option>
+      {% endfor %}
     </select>
   </label>
-  <label><input id="vatOnly" type="checkbox"> Зөвхөн НӨАТ-тай</label>
-  <input id="globalSearch" type="text" placeholder="Нийт хайлт...">
-</div>
+  <label>Чиглэл
+    <select name="dir">
+      <option value="">Бүгд</option>
+      <option value="in"  {% if filters.dir  == 'in'  %}selected{% endif %}>Орлого (Дебит)</option>
+      <option value="out" {% if filters.dir == 'out' %}selected{% endif %}>Зарлага (Кредит)</option>
+    </select>
+  </label>
+  <label>Данс (хуулга)
+    <select name="origin">
+      <option value="">Бүгд</option>
+      <option value="CASH" {% if filters.origin == 'CASH' %}selected{% endif %}>КАСС</option>
+      <option value="BANK" {% if filters.origin == 'BANK' %}selected{% endif %}>ХАРИЛЦАХ</option>
+    </select>
+  </label>
+  <label>Харилцагч
+    <select name="customer">
+      <option value="">Бүгд</option>
+      {% for c in customers %}
+        <option value="{{ c }}" {% if filters.customer == c %}selected{% endif %}>{{ c }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Хайлт (утга)
+    <input type="text" name="q" value="{{ filters.q ?? '' }}" placeholder="Гүйлгээний утга...">
+  </label>
+
+  <div class="right-actions">
+    <label>Мөр/хуудас
+      <select name="perPage">
+        {% for n in pagination.allowed %}
+          <option value="{{ n }}" {% if pagination.perPage == n %}selected{% endif %}>{{ n }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit">Шүүх</button>
+    <label style="margin-left:10px"><input id="vatOnly" type="checkbox"> Зөвхөн НӨАТ-тай</label>
+    <input id="globalSearch" type="text" placeholder="Нийт хайлт…">
+  </div>
+</form>
 
 <table id="txTable" class="tbl">
   <thead>
@@ -42,38 +91,36 @@
     </tr>
     <tr class="filters">
       <th><input data-col="0" type="text" placeholder="#"></th>
-      <th><input data-col="1" type="text" placeholder="Ж/нь: 2025-09-01"></th>
+      <th><input data-col="1" type="text" placeholder="2025-09-01"></th>
       <th><input data-col="2" type="text" placeholder="Утга"></th>
       <th><input data-col="3" type="text" placeholder="Харилцагч"></th>
       <th><input data-col="4" type="text" placeholder="дебит"></th>
       <th></th>
       <th><input data-col="6" type="text" placeholder="кредит"></th>
       <th></th>
-      <th><input data-col="8" type="text" placeholder="Касс/Харилцах"></th>
+      <th><input data-col="8" type="text" placeholder="КАСС / ХАРИЛЦАХ"></th>
       <th></th>
     </tr>
   </thead>
   <tbody>
     {% for r in rows %}
-      {# Дебит/Кредит логик: Орлого бол Кредит, Зарлага бол Дебит #}
       {% set debit  = r.isIncome ? 0 : (r.amount|abs) %}
       {% set credit = r.isIncome ? (r.amount|abs) : 0 %}
       {% set originLabel = (r.origin ?? '')|upper == 'CASH' ? 'Касс' : ((r.origin ?? '')|upper == 'BANK' ? 'Харилцах' : '') %}
-
       <tr data-origin="{{ (r.origin ?? '')|upper }}">
-        <td class="center">{{ loop.index }}</td>
+        <td class="center">{{ pagination.offset + loop.index }}</td>
         <td>{{ r.date ? r.date|date('Y-m-d') : '' }}</td>
         <td>{{ r.description ?? '' }}</td>
         <td>{{ r.customer ?? '' }}</td>
 
-        <td class="right">{{ debit  ? (debit|number_format(0, '.', ','))  : '' }}</td>
+        <td class="right">{{ debit  ? (debit|number_format(0,'.',','))  : '' }}</td>
         <td>
           <select name="rows[{{ loop.index0 }}][debit_account]">
             <option value="">— Сонгох —</option>
           </select>
         </td>
 
-        <td class="right">{{ credit ? (credit|number_format(0, '.', ',')) : '' }}</td>
+        <td class="right">{{ credit ? (credit|number_format(0,'.',',')) : '' }}</td>
         <td>
           <select name="rows[{{ loop.index0 }}][credit_account]">
             <option value="">— Сонгох —</option>
@@ -81,16 +128,28 @@
         </td>
 
         <td>{{ originLabel }}</td>
-
-        <td class="center">
-          <input type="checkbox" name="rows[{{ loop.index0 }}][vat]" {% if r.vat ?? false %}checked{% endif %}>
-        </td>
+        <td class="center"><input type="checkbox" name="rows[{{ loop.index0 }}][vat]" {% if r.vat ?? false %}checked{% endif %}></td>
       </tr>
     {% else %}
       <tr><td colspan="10" class="center">Мэдээлэл алга</td></tr>
     {% endfor %}
   </tbody>
 </table>
+
+{% set cur = pagination.page %}
+{% set last = pagination.totalPages %}
+<div class="pagination">
+  <span>Нийт: {{ totalCount }} | Хуудас: {{ cur }}/{{ last }}</span>
+  {% set q = app.request.query.all %}
+  {% set prev = cur > 1 ? cur-1 : 1 %}
+  {% set next = cur < last ? cur+1 : last %}
+
+  <a href="{{ path(app.request.attributes.get('_route'), q|merge({'page': 1})) }}">&laquo; Эхний</a>
+  <a href="{{ path(app.request.attributes.get('_route'), q|merge({'page': prev})) }}">&lsaquo; Өмнөх</a>
+  <span class="active">{{ cur }}</span>
+  <a href="{{ path(app.request.attributes.get('_route'), q|merge({'page': next})) }}">Дараах &rsaquo;</a>
+  <a href="{{ path(app.request.attributes.get('_route'), q|merge({'page': last})) }}">Сүүлч &raquo;</a>
+</div>
 
 <script>
 (function(){
@@ -99,37 +158,26 @@
   const inputs=[...table.querySelectorAll('thead input[data-col]')];
   const vatOnly=document.getElementById('vatOnly');
   const globalSearch=document.getElementById('globalSearch');
-  const originSel=document.getElementById('originFilter');
   const norm=s=>String(s||'').toLowerCase().trim();
 
   function pass(tr){
-    // per-column text filters
     for(const inp of inputs){
       const q=norm(inp.value); if(!q) continue;
       const col=+inp.dataset.col, cell=tr.cells[col]?.innerText||'';
       if(!norm(cell).includes(q)) return false;
     }
-    // origin dropdown filter
-    const want=originSel.value;
-    if(want && (tr.dataset.origin||'')!==want) return false;
-
-    // VAT only
-    if(vatOnly.checked){
+    if(vatOnly && vatOnly.checked){
       const cb=tr.cells[9]?.querySelector('input[type="checkbox"]');
       if(!(cb&&cb.checked)) return false;
     }
-    // global search
-    const gq=norm(globalSearch.value);
+    const gq=norm(globalSearch?.value||'');
     if(gq && !norm(tr.innerText).includes(gq)) return false;
-
     return true;
   }
   function apply(){ rows.forEach(tr=>tr.style.display=pass(tr)?'':'none'); }
-
   inputs.forEach(i=>i.addEventListener('input',apply));
-  vatOnly.addEventListener('change',apply);
-  originSel.addEventListener('change',apply);
-  globalSearch.addEventListener('input',apply);
+  vatOnly?.addEventListener('change',apply);
+  globalSearch?.addEventListener('input',apply);
 })();
 </script>
 {% endblock %}
