@@ -32,12 +32,11 @@ app_home:
   controller: Symfony\Bundle\FrameworkBundle\Controller\RedirectController
   defaults: { route: bank_reports_home, permanent: false }
 
-# ⬇️ Дансны хуулгын ROUTE-уудыг жинхэнэ Controller action руу холбоно
+# Дансны хуулгын хэсэг
 bank_reports_home:
   path: /app/reports/bank
   controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
   defaults: { template: 'reports/bank/menu.html.twig' }
-
 
 bank_reports_import:
   path: /app/reports/bank/import
@@ -47,7 +46,11 @@ bank_reports_prepare:
   path: /app/reports/bank/prepare
   controller: App\Controller\ReportController::summary
 
-# ⬇️ Hook to real ProfileController paths
+bank_reports_statement:
+  path: /app/reports/bank/statement
+  controller: App\Controller\ReportController::summary
+
+# Профайл руу чиглүүлэх
 app_profile_home:
   path: /app/profile
   controller: Symfony\Bundle\FrameworkBundle\Controller\RedirectController
@@ -63,16 +66,19 @@ app_profile_password:
   controller: Symfony\Bundle\FrameworkBundle\Controller\RedirectController
   defaults: { path: /profile/change-password, permanent: false }
 
+# Тайлангийн үндсэн линк → банк руу
 app_reports_home:
   path: /app/reports
   controller: Symfony\Bundle\FrameworkBundle\Controller\RedirectController
   defaults: { route: bank_reports_home, permanent: false }
 
+# Хуучин линк
 legacy_reports_redirect:
   path: /reports
   controller: Symfony\Bundle\FrameworkBundle\Controller\RedirectController
   defaults: { route: bank_reports_home, permanent: false }
 
+# EBARIMT
 app_reports_ebarimt_home:
   path: /app/reports/ebarimt
   controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
@@ -93,11 +99,8 @@ app_reports_ebarimt_history:
   controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
   defaults: { template: 'reports/ebarimt/history.html.twig' }
 
-bank_reports_statement:
-  path: /app/reports/bank/statement
-  controller: App\Controller\ReportController::summary
-
-  upload_legacy:
+# Legacy direct endpoints
+upload_legacy:
   path: /upload
   controller: App\Controller\ReportController::upload
 
