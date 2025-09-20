@@ -27,7 +27,7 @@ security:
         interval: '1 minute'
 
       # Дахин нэвтрэх эрх хаагдсан эсэхийг шалгагч (танд байгаа класс)
-      user_checker: App\Security\UserChecker
+  # user_checker: App\Security\UserChecker
 
       form_login:
         login_path: app_login      # таны LoginController-ийн route
