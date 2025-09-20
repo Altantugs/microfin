@@ -91,3 +91,7 @@ app_reports_ebarimt_history:
   path: /app/reports/ebarimt/history
   controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
   defaults: { template: 'reports/ebarimt/history.html.twig' }
+
+bank_reports_statement:
+  path: /app/reports/bank/statement
+  controller: App\Controller\ReportController::summary
