@@ -96,3 +96,11 @@ app_reports_ebarimt_history:
 bank_reports_statement:
   path: /app/reports/bank/statement
   controller: App\Controller\ReportController::summary
+
+  upload_legacy:
+  path: /upload
+  controller: App\Controller\ReportController::upload
+
+summary_legacy:
+  path: /summary
+  controller: App\Controller\ReportController::summary
