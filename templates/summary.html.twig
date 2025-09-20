@@ -2,46 +2,87 @@
 {% block title %}Гүйлгээний жагсаалт (Журнал){% endblock %}
 {% block body %}
 <h1>Гүйлгээний жагсаалт (Журнал)</h1>
-<style>.tbl{width:100%;border-collapse:collapse}.tbl th,.tbl td{border:1px solid #ddd;padding:8px}.tbl th{background:#f7f7f7;position:sticky;top:0}.filters input{width:100%;box-sizing:border-box;padding:6px}.toolbar{display:flex;gap:16px;align-items:center;margin:10px 0 14px}</style>
+
+<style>
+  .tbl{width:100%;border-collapse:collapse}
+  .tbl th,.tbl td{border:1px solid #ddd;padding:8px}
+  .tbl th{background:#f7f7f7;position:sticky;top:0}
+  .filters input{width:100%;box-sizing:border-box;padding:6px}
+  .toolbar{display:flex;gap:16px;align-items:center;margin:10px 0 14px;flex-wrap:wrap}
+</style>
+
 <div class="toolbar">
+  <label>Данс:
+    <select id="originFilter" name="origin">
+      <option value="">Бүгд</option>
+      <option value="CASH">КАСС</option>
+      <option value="BANK">ХАРИЛЦАХ</option>
+    </select>
+  </label>
   <label><input id="vatOnly" type="checkbox"> Зөвхөн НӨАТ-тай</label>
   <input id="globalSearch" type="text" placeholder="Нийт хайлт...">
 </div>
+
 <table id="txTable" class="tbl">
   <thead>
     <tr>
-      <th>Д/д</th><th>Огноо</th><th>Гүйлгээний утга</th><th>Харилцагч</th><th>Дүн (Орлого/Дебит, Кредит)</th><th>НӨАТ</th>
+      <th>Д/д</th>
+      <th>Огноо</th>
+      <th>Гүйлгээний утга</th>
+      <th>Харилцагч</th>
+      <th>Дебит</th>
+      <th>Кредит</th>
+      <th>НӨАТ</th>
     </tr>
     <tr class="filters">
-      <th><input data-col="0" type="text" placeholder="#"></th>
+      <th></th>
       <th><input data-col="1" type="text" placeholder="Ж/нь: 2025-09-01"></th>
       <th><input data-col="2" type="text" placeholder="Утга"></th>
       <th><input data-col="3" type="text" placeholder="Харилцагч"></th>
-      <th><input data-col="4" type="text" placeholder="дун/дебит/кредит"></th>
+      <th><input data-col="4" type="text" placeholder="дебит"></th>
+      <th><input data-col="5" type="text" placeholder="кредит"></th>
       <th></th>
     </tr>
   </thead>
   <tbody>
-    <tr><td>1</td><td>2025-09-01</td><td>Борлуулалт</td><td>ABC LLC</td><td>Дебит: 0 • Кредит: 850,000</td><td style="text-align:center"><input type="checkbox"></td></tr>
-    <tr><td>2</td><td>2025-09-02</td><td>Худалдан авалт</td><td>ТӨХК ХХК</td><td>Дебит: 1,200,000 • Кредит: 0</td><td style="text-align:center"><input type="checkbox" checked></td></tr>
+    {% for r in rows %}
+      {% set debit  = r.isIncome ? (r.amount|abs) : 0 %}
+      {% set credit = r.isIncome ? 0 : (r.amount|abs) %}
+      <tr data-origin="{{ r.origin ?? '' }}">
+        <td>{{ loop.index }}</td>
+        <td>{{ r.date ? r.date|date('Y-m-d') : '' }}</td>
+        <td>{{ r.description }}</td>
+        <td>{{ r.customer }}</td>
+        <td>{{ debit  ? (debit|number_format(0, '.', ','))  : '' }}</td>
+        <td>{{ credit ? (credit|number_format(0, '.', ',')) : '' }}</td>
+        <td style="text-align:center"><input type="checkbox" {% if r.vat %}checked{% endif %}></td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7" style="text-align:center">Мэдээлэл алга</td></tr>
+    {% endfor %}
   </tbody>
 </table>
+
 <script>
 (function(){
   const table=document.getElementById('txTable');
   const rows=[...table.tBodies[0].rows];
-  const inputs=[...table.querySelectorAll('.filters input[data-col]')];
+  const inputs=[...table.querySelectorAll('thead input[data-col]')];
   const vatOnly=document.getElementById('vatOnly');
   const globalSearch=document.getElementById('globalSearch');
+  const originSel=document.getElementById('originFilter');
   const norm=s=>String(s||'').toLowerCase().trim();
+
   function pass(tr){
     for(const inp of inputs){
       const q=norm(inp.value); if(!q) continue;
       const col=+inp.dataset.col, cell=tr.cells[col]?.innerText||'';
       if(!norm(cell).includes(q)) return false;
     }
+    const want=originSel.value;
+    if(want && (tr.dataset.origin||'')!==want) return false;
     if(vatOnly.checked){
-      const cb=tr.cells[5]?.querySelector('input[type="checkbox"]');
+      const cb=tr.cells[6]?.querySelector('input[type="checkbox"]');
       if(!(cb&&cb.checked)) return false;
     }
     const gq=norm(globalSearch.value);
@@ -52,6 +93,7 @@
   inputs.forEach(i=>i.addEventListener('input',apply));
   vatOnly.addEventListener('change',apply);
   globalSearch.addEventListener('input',apply);
+  originSel.addEventListener('change',apply);
 })();
 </script>
 {% endblock %}
