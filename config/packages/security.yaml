@@ -1,6 +1,5 @@
 # config/packages/security.yaml
 security:
-  # Админ нь хэрэглэгчийн бүх эрхийг автоматаар агуулна
   role_hierarchy:
     ROLE_ADMIN: [ROLE_USER]
 
@@ -22,46 +21,41 @@ security:
       lazy: true
       provider: app_user_provider
 
-      # 🚦 Нэвтрэлтийг хязгаарлах (rate limit)
       login_throttling:
         max_attempts: 5
         interval: '1 minute'
 
-      # ❗ Блоклогдсон / хугацаа дууссан хэрэглэгчийг хориглох шалгагч
       user_checker: App\Security\UserChecker
 
       form_login:
         login_path: app_login
         check_path: app_login
+        csrf_token_generator: security.csrf.token_manager
 
       logout:
         path: app_logout
+        target: /
 
-      # ✅ Remember-me (14 хоног)
       remember_me:
         secret: '%kernel.secret%'
-        lifetime: 1209600
+        lifetime: 1209600    # 14 хоног
         path: /
 
-      # ✅ Impersonation (_switch_user query param)
       switch_user:
         role: ROLE_ADMIN
         parameter: _switch_user
 
   access_control:
-    # 🔓 Healthcheck / static
+    # Public
     - { path: ^/healthz$,  roles: PUBLIC_ACCESS }
     - { path: ^/assets,    roles: PUBLIC_ACCESS }
-
-    # 🔓 Auth хуудсууд
     - { path: ^/login$,    roles: PUBLIC_ACCESS }
     - { path: ^/register$, roles: PUBLIC_ACCESS }
-
-    # 🔓 Public сайт: Нүүр, Танилцуулга, Заавар, Үнэ, Холбоо барих
+    - { path: ^/logout$,   roles: PUBLIC_ACCESS }
     - { path: ^/(|intro|guide|pricing|contact)$, roles: PUBLIC_ACCESS }
 
-    # 🔐 Админ хэсэг
+    # Admin
     - { path: ^/admin,     roles: ROLE_ADMIN }
 
-    # 🔐 Апп хэсэг (нэвтэрсний дараах)
+    # App (authenticated)
     - { path: ^/app,       roles: ROLE_USER }

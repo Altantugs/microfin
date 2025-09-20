@@ -93,3 +93,6 @@ app_reports_ebarimt_history:
   path: /app/reports/ebarimt/history
   controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
   defaults: { template: 'reports/ebarimt/history.html.twig' }
+
+app_logout:
+  path: /logout
