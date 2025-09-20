@@ -2,26 +2,33 @@
 framework:
   secret: '%env(APP_SECRET)%'
 
+  # ✅ CSRF хамгаалалт
   csrf_protection: true
 
+  # ✅ Session тохиргоо (cookie + хугацаа)
   session:
-    handler_id: null
+    handler_id: null            # default file-based session storage
     cookie_secure: auto
     cookie_samesite: lax
     cookie_httponly: true
+    cookie_lifetime: 0          # browser хаагдахад дуусна
+    gc_maxlifetime: 14400       # 4 цаг сервер талдаа хадгална
 
+  # ✅ Форм компонент
   form: true
 
+  # ✅ Роутер
   router:
     utf8: true
 
+  # ✅ HTTP method override хэрэггүй
   http_method_override: false
 
-  # ✅ Login throttling-д ашиглах rate limiter
+  # ✅ Нэвтрэлтийн хурд хязгаарлалт (security.yaml -> login_throttling үүнийг ашиглана)
   rate_limiter:
     login:
-      policy: 'fixed_window'
-      limit: 5           # 1 минутанд 5 удаа оролдлого
+      policy: fixed_window
+      limit: 5
       interval: '1 minute'
 
 when@test:
