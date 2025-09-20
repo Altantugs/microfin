@@ -21,16 +21,20 @@ security:
       lazy: true
       provider: app_user_provider
 
+      # Нэвтрэлтийн оролдлогын хурдыг хязгаарлах
       login_throttling:
         max_attempts: 5
         interval: '1 minute'
 
+      # Дахин нэвтрэх эрх хаагдсан эсэхийг шалгагч (танд байгаа класс)
       user_checker: App\Security\UserChecker
 
       form_login:
-        login_path: app_login
+        login_path: app_login      # таны LoginController-ийн route
         check_path: app_login
-        csrf_token_generator: security.csrf.token_manager
+        enable_csrf: true          # ✅ зөв түлхүүр (csrf хамгаалалт)
+        csrf_parameter: _csrf_token
+        csrf_token_id: authenticate
 
       logout:
         path: app_logout
