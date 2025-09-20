@@ -5,10 +5,13 @@
 
 <style>
   .tbl{width:100%;border-collapse:collapse}
-  .tbl th,.tbl td{border:1px solid #ddd;padding:8px}
+  .tbl th,.tbl td{border:1px solid #ddd;padding:8px;vertical-align:middle}
   .tbl th{background:#f7f7f7;position:sticky;top:0}
   .filters input{width:100%;box-sizing:border-box;padding:6px}
+  .tbl select{width:100%;box-sizing:border-box;padding:6px}
   .toolbar{display:flex;gap:16px;align-items:center;margin:10px 0 14px;flex-wrap:wrap}
+  .right{text-align:right;white-space:nowrap}
+  .center{text-align:center}
 </style>
 
 <div class="toolbar">
@@ -31,34 +34,60 @@
       <th>Гүйлгээний утга</th>
       <th>Харилцагч</th>
       <th>Дебит</th>
+      <th>ДБ Данс сонгох</th>
       <th>Кредит</th>
+      <th>КР данс сонгох</th>
+      <th>Хуулга</th>
       <th>НӨАТ</th>
     </tr>
     <tr class="filters">
-      <th></th>
+      <th><input data-col="0" type="text" placeholder="#"></th>
       <th><input data-col="1" type="text" placeholder="Ж/нь: 2025-09-01"></th>
       <th><input data-col="2" type="text" placeholder="Утга"></th>
       <th><input data-col="3" type="text" placeholder="Харилцагч"></th>
       <th><input data-col="4" type="text" placeholder="дебит"></th>
-      <th><input data-col="5" type="text" placeholder="кредит"></th>
+      <th></th>
+      <th><input data-col="6" type="text" placeholder="кредит"></th>
+      <th></th>
+      <th><input data-col="8" type="text" placeholder="Касс/Харилцах"></th>
       <th></th>
     </tr>
   </thead>
   <tbody>
     {% for r in rows %}
-      {% set debit  = r.isIncome ? (r.amount|abs) : 0 %}
-      {% set credit = r.isIncome ? 0 : (r.amount|abs) %}
-      <tr data-origin="{{ r.origin ?? '' }}">
-        <td>{{ loop.index }}</td>
+      {# Дебит/Кредит логик: Орлого бол Кредит, Зарлага бол Дебит #}
+      {% set debit  = r.isIncome ? 0 : (r.amount|abs) %}
+      {% set credit = r.isIncome ? (r.amount|abs) : 0 %}
+      {% set originLabel = (r.origin ?? '')|upper == 'CASH' ? 'Касс' : ((r.origin ?? '')|upper == 'BANK' ? 'Харилцах' : '') %}
+
+      <tr data-origin="{{ (r.origin ?? '')|upper }}">
+        <td class="center">{{ loop.index }}</td>
         <td>{{ r.date ? r.date|date('Y-m-d') : '' }}</td>
-        <td>{{ r.description }}</td>
-        <td>{{ r.customer }}</td>
-        <td>{{ debit  ? (debit|number_format(0, '.', ','))  : '' }}</td>
-        <td>{{ credit ? (credit|number_format(0, '.', ',')) : '' }}</td>
-        <td style="text-align:center"><input type="checkbox" {% if r.vat %}checked{% endif %}></td>
+        <td>{{ r.description ?? '' }}</td>
+        <td>{{ r.customer ?? '' }}</td>
+
+        <td class="right">{{ debit  ? (debit|number_format(0, '.', ','))  : '' }}</td>
+        <td>
+          <select name="rows[{{ loop.index0 }}][debit_account]">
+            <option value="">— Сонгох —</option>
+          </select>
+        </td>
+
+        <td class="right">{{ credit ? (credit|number_format(0, '.', ',')) : '' }}</td>
+        <td>
+          <select name="rows[{{ loop.index0 }}][credit_account]">
+            <option value="">— Сонгох —</option>
+          </select>
+        </td>
+
+        <td>{{ originLabel }}</td>
+
+        <td class="center">
+          <input type="checkbox" name="rows[{{ loop.index0 }}][vat]" {% if r.vat ?? false %}checked{% endif %}>
+        </td>
       </tr>
     {% else %}
-      <tr><td colspan="7" style="text-align:center">Мэдээлэл алга</td></tr>
+      <tr><td colspan="10" class="center">Мэдээлэл алга</td></tr>
     {% endfor %}
   </tbody>
 </table>
@@ -74,26 +103,33 @@
   const norm=s=>String(s||'').toLowerCase().trim();
 
   function pass(tr){
+    // per-column text filters
     for(const inp of inputs){
       const q=norm(inp.value); if(!q) continue;
       const col=+inp.dataset.col, cell=tr.cells[col]?.innerText||'';
       if(!norm(cell).includes(q)) return false;
     }
+    // origin dropdown filter
     const want=originSel.value;
     if(want && (tr.dataset.origin||'')!==want) return false;
+
+    // VAT only
     if(vatOnly.checked){
-      const cb=tr.cells[6]?.querySelector('input[type="checkbox"]');
+      const cb=tr.cells[9]?.querySelector('input[type="checkbox"]');
       if(!(cb&&cb.checked)) return false;
     }
+    // global search
     const gq=norm(globalSearch.value);
     if(gq && !norm(tr.innerText).includes(gq)) return false;
+
     return true;
   }
   function apply(){ rows.forEach(tr=>tr.style.display=pass(tr)?'':'none'); }
+
   inputs.forEach(i=>i.addEventListener('input',apply));
   vatOnly.addEventListener('change',apply);
-  globalSearch.addEventListener('input',apply);
   originSel.addEventListener('change',apply);
+  globalSearch.addEventListener('input',apply);
 })();
 </script>
 {% endblock %}
