@@ -5,14 +5,24 @@ framework:
   # ✅ CSRF хамгаалалт
   csrf_protection: true
 
+  # ✅ Reverse proxy/host итгэлцэл (Render зэрэг орчинд заавал)
+  trusted_proxies: '%env(TRUSTED_PROXIES)%'
+  trusted_hosts: '%env(regex:TRUSTED_HOSTS)%'
+  trusted_headers:
+    - x-forwarded-for
+    - x-forwarded-proto
+    - x-forwarded-port
+    - x-forwarded-host
+
   # ✅ Session тохиргоо (cookie + хугацаа)
   session:
-    handler_id: null            # default file-based session storage
+    handler_id: null
+    name: SFSESSID            # шинэ cookie нэр (хуучин session-уудыг хүчингүй болгоно)
     cookie_secure: auto
     cookie_samesite: lax
     cookie_httponly: true
-    cookie_lifetime: 0          # browser хаагдахад дуусна
-    gc_maxlifetime: 14400       # 4 цаг сервер талдаа хадгална
+    cookie_lifetime: 0
+    gc_maxlifetime: 14400
 
   # ✅ Форм компонент
   form: true
@@ -24,7 +34,7 @@ framework:
   # ✅ HTTP method override хэрэггүй
   http_method_override: false
 
-  # ✅ Нэвтрэлтийн хурд хязгаарлалт (security.yaml -> login_throttling үүнийг ашиглана)
+  # ✅ Нэвтрэлтийн хурд хязгаарлалт
   rate_limiter:
     login:
       policy: fixed_window
