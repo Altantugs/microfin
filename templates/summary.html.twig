@@ -2,29 +2,15 @@
 {% block title %}Гүйлгээний жагсаалт (Журнал){% endblock %}
 {% block body %}
 <h1>Гүйлгээний жагсаалт (Журнал)</h1>
-
-<style>
-  .tbl { width:100%; border-collapse:collapse; }
-  .tbl th, .tbl td { border:1px solid #ddd; padding:8px; }
-  .tbl th { background:#f7f7f7; position:sticky; top:0; }
-  .filters input[type="text"]{ width:100%; box-sizing:border-box; padding:6px; }
-  .toolbar{ display:flex; gap:16px; align-items:center; margin:10px 0 14px; }
-</style>
-
+<style>.tbl{width:100%;border-collapse:collapse}.tbl th,.tbl td{border:1px solid #ddd;padding:8px}.tbl th{background:#f7f7f7;position:sticky;top:0}.filters input{width:100%;box-sizing:border-box;padding:6px}.toolbar{display:flex;gap:16px;align-items:center;margin:10px 0 14px}</style>
 <div class="toolbar">
   <label><input id="vatOnly" type="checkbox"> Зөвхөн НӨАТ-тай</label>
-  <input id="globalSearch" type="text" placeholder="Нийт хайлт... (утга, харилцагч гэх мэт)">
+  <input id="globalSearch" type="text" placeholder="Нийт хайлт...">
 </div>
-
 <table id="txTable" class="tbl">
   <thead>
     <tr>
-      <th>Д/д</th>
-      <th>Огноо</th>
-      <th>Гүйлгээний утга</th>
-      <th>Харилцагч</th>
-      <th>Дүн (Орлого/Дебит, Кредит)</th>
-      <th>НӨАТ</th>
+      <th>Д/д</th><th>Огноо</th><th>Гүйлгээний утга</th><th>Харилцагч</th><th>Дүн (Орлого/Дебит, Кредит)</th><th>НӨАТ</th>
     </tr>
     <tr class="filters">
       <th><input data-col="0" type="text" placeholder="#"></th>
@@ -36,67 +22,36 @@
     </tr>
   </thead>
   <tbody>
-    {# TODO: Энд backend-аас ирэх мөрүүдийг рэндэрлэнэ. Доорх нь жишээ мөрүүд. #}
-    <tr>
-      <td>1</td>
-      <td>2025-09-01</td>
-      <td>Татвар шилжүүлэг</td>
-      <td>ТӨХК ХХК</td>
-      <td>Дебит: 1,200,000 • Кредит: 0</td>
-      <td><input type="checkbox" checked disabled></td>
-    </tr>
-    <tr>
-      <td>2</td>
-      <td>2025-09-02</td>
-      <td>Борлуулалтын орлого</td>
-      <td>ABC LLC</td>
-      <td>Дебит: 0 • Кредит: 850,000</td>
-      <td><input type="checkbox" disabled></td>
-    </tr>
+    <tr><td>1</td><td>2025-09-01</td><td>Борлуулалт</td><td>ABC LLC</td><td>Дебит: 0 • Кредит: 850,000</td><td style="text-align:center"><input type="checkbox"></td></tr>
+    <tr><td>2</td><td>2025-09-02</td><td>Худалдан авалт</td><td>ТӨХК ХХК</td><td>Дебит: 1,200,000 • Кредит: 0</td><td style="text-align:center"><input type="checkbox" checked></td></tr>
   </tbody>
 </table>
-
 <script>
 (function(){
-  const table = document.getElementById('txTable');
-  const rows = Array.from(table.tBodies[0].rows);
-  const inputs = Array.from(table.querySelectorAll('.filters input[data-col]'));
-  const vatOnly = document.getElementById('vatOnly');
-  const globalSearch = document.getElementById('globalSearch');
-
-  function normalize(s){ return (s||'').toString().toLowerCase().trim(); }
-
-  function passesFilters(tr){
-    // column filters
+  const table=document.getElementById('txTable');
+  const rows=[...table.tBodies[0].rows];
+  const inputs=[...table.querySelectorAll('.filters input[data-col]')];
+  const vatOnly=document.getElementById('vatOnly');
+  const globalSearch=document.getElementById('globalSearch');
+  const norm=s=>String(s||'').toLowerCase().trim();
+  function pass(tr){
     for(const inp of inputs){
-      const col = +inp.dataset.col;
-      const q = normalize(inp.value);
-      if(!q) continue;
-      const cell = tr.cells[col]?.innerText || '';
-      if(!normalize(cell).includes(q)) return false;
+      const q=norm(inp.value); if(!q) continue;
+      const col=+inp.dataset.col, cell=tr.cells[col]?.innerText||'';
+      if(!norm(cell).includes(q)) return false;
     }
-    // VAT filter
     if(vatOnly.checked){
-      const vatCell = tr.cells[5];
-      const cb = vatCell?.querySelector('input[type="checkbox"]');
-      if(!(cb && cb.checked)) return false;
+      const cb=tr.cells[5]?.querySelector('input[type="checkbox"]');
+      if(!(cb&&cb.checked)) return false;
     }
-    // global search
-    const gq = normalize(globalSearch.value);
-    if(gq){
-      const text = normalize(tr.innerText);
-      if(!text.includes(gq)) return false;
-    }
+    const gq=norm(globalSearch.value);
+    if(gq && !norm(tr.innerText).includes(gq)) return false;
     return true;
   }
-
-  function apply(){
-    rows.forEach(tr => { tr.style.display = passesFilters(tr) ? '' : 'none'; });
-  }
-
-  inputs.forEach(i => i.addEventListener('input', apply));
-  vatOnly.addEventListener('change', apply);
-  globalSearch.addEventListener('input', apply);
+  function apply(){ rows.forEach(tr=>tr.style.display=pass(tr)?'':'none'); }
+  inputs.forEach(i=>i.addEventListener('input',apply));
+  vatOnly.addEventListener('change',apply);
+  globalSearch.addEventListener('input',apply);
 })();
 </script>
 {% endblock %}
