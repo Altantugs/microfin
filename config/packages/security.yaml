@@ -35,10 +35,10 @@ security:
         enable_csrf: true
         csrf_parameter: _csrf_token
         csrf_token_id: authenticate
-        username_parameter: email        # <input name="email">
-        password_parameter: password     # <input name="password">
+        username_parameter: _username     # ✅ form-той таарсан
+        password_parameter: _password     # ✅ form-той таарсан
         use_forward: false
-        default_target_path: /app        # амжилттай нэвтэрсний дараах чиглэл
+        default_target_path: /app         # амжилттай нэвтэрсний дараах чиглэл
 
       logout:
         path: app_logout
