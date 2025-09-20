@@ -2,39 +2,36 @@
 framework:
   secret: '%env(APP_SECRET)%'
 
-  # ✅ CSRF хамгаалалт
   csrf_protection: true
 
-  # ✅ Reverse proxy/host итгэлцэл (Render зэрэг орчинд заавал)
-  trusted_proxies: '%env(TRUSTED_PROXIES)%'
-  trusted_hosts: '%env(regex:TRUSTED_HOSTS)%'
+  # ✅ Proxy/Host тохиргоо (env шаардахгүй, Render-д шууд OK)
+  trusted_proxies: '127.0.0.1,REMOTE_ADDR'
+  trusted_hosts:
+    - '^microfin-ui52\.onrender\.com$'
+    - '^localhost$'
+    - '^127\.0\.0\.1$'
   trusted_headers:
     - x-forwarded-for
     - x-forwarded-proto
     - x-forwarded-port
     - x-forwarded-host
 
-  # ✅ Session тохиргоо (cookie + хугацаа)
   session:
     handler_id: null
-    name: SFSESSID            # шинэ cookie нэр (хуучин session-уудыг хүчингүй болгоно)
+    name: SFSESSID
     cookie_secure: auto
     cookie_samesite: lax
     cookie_httponly: true
     cookie_lifetime: 0
     gc_maxlifetime: 14400
 
-  # ✅ Форм компонент
   form: true
 
-  # ✅ Роутер
   router:
     utf8: true
 
-  # ✅ HTTP method override хэрэггүй
   http_method_override: false
 
-  # ✅ Нэвтрэлтийн хурд хязгаарлалт
   rate_limiter:
     login:
       policy: fixed_window
