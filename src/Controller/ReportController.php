@@ -18,65 +18,62 @@ final class ReportController extends AbstractController
         ExcelImportService $excelImportService,
         EntityManagerInterface $em
     ): Response {
-        // Хамгаалалт — заавал нэвтэрсэн байх
         $user = $this->getUser();
         if (!$user) {
             return $this->redirectToRoute('login');
         }
 
         if ($request->isMethod('POST')) {
-            // 1) Зөвхөн тухайн хэрэглэгчийн дата-г цэвэрлэх
-            if ($request->request->get('clear')) {
-                $em->createQuery('DELETE FROM App\Entity\Transaction t WHERE t.user = :u')
-                   ->setParameter('u', $user)
-                   ->execute();
-                $this->addFlash('success', 'Таны бүх гүйлгээг цэвэрлэж устгалаа.');
-            }
+            // ✅ шинэ формын талбарууд: account, delete_previous, file
+            $account = (string)$request->request->get('account', '');
+            $deletePrevious = (bool)$request->request->get('delete_previous', false);
+            $file = $request->files->get('file');
 
-            // 2) Баганууд (origin, customer) байгаа эсэхийг баталгаажуулах
-            try {
-                $this->ensureColumns($em);
-            } catch (\Throwable $e) {
-                $this->addFlash('error', 'DB migrate error: '.$e->getMessage());
-                return $this->redirectToRoute('upload_excel');
-            }
+            // account → origin map
+            $origin = match (strtolower($account)) {
+                'kass'       => 'CASH',
+                'hariltsah'  => 'BANK',
+                default      => 'BANK',
+            };
 
-            // 3) Upload төрлийг авах
-            $origin = strtoupper(trim((string)$request->request->get('origin', '')));
-            if (!in_array($origin, ['CASH', 'BANK'], true)) {
-                $this->addFlash('error', 'Төрөл сонгоно уу: КАСС эсвэл ХАРИЛЦАХ ДАНСНЫ ХУУЛГА.');
-                return $this->redirectToRoute('upload_excel');
-            }
-
-            // 4) Файл шалгах
-            $file = $request->files->get('excel');
             if (!$file) {
                 $this->addFlash('error', 'Файл сонгогдоогүй.');
-                return $this->redirectToRoute('upload_excel');
+                return $this->redirectToRoute('bank_reports_import');
             }
 
             try {
-                // 5) Импорт — ExcelImportService нь таний user-г Transaction-д тохируулж хадгална
+                // хүсвэл өмнөх гүйлгээг устгана (зөвхөн тухайн хэрэглэгчийн)
+                if ($deletePrevious) {
+                    $em->createQuery('DELETE FROM App\Entity\Transaction t WHERE t.user = :u')
+                        ->setParameter('u', $user)
+                        ->execute();
+                }
+
+                // шаардлагатай нэмэлт баганууд
+                $this->ensureColumns($em);
+
+                // импорт
                 $count = $excelImportService->import($file->getPathname(), $origin);
 
-                // Fallback (хэрвээ хуучин мөрүүдэд user=null үлдвэл, бүгдийг таны user-р тэмдэглэнэ)
+                // хуучин мөрүүд user_id=null байвал нөхөх
                 $em->getConnection()->executeStatement(
                     'UPDATE "transaction" SET user_id = :uid WHERE user_id IS NULL',
                     ['uid' => $user->getId()]
                 );
 
-                $this->addFlash('success', sprintf(
-                    'Excel амжилттай импортлогдлоо! (%d мөр) • Төрөл: %s',
-                    $count,
-                    $origin === 'CASH' ? 'КАСС' : 'ХАРИЛЦАХ'
-                ));
+                $this->addFlash(
+                    'success',
+                    sprintf('Импорт амжилттай. %d мөр. Төрөл: %s', (int)$count, $origin === 'CASH' ? 'КАСС' : 'ХАРИЛЦАХ')
+                );
             } catch (\Throwable $e) {
-                $this->addFlash('error', 'Алдаа: ' . $e->getMessage());
+                $this->addFlash('error', 'Алдаа: '.$e->getMessage());
             }
 
-            return $this->redirectToRoute('upload_excel');
+            // ✅ /app/reports/bank/import руу буцаана
+            return $this->redirectToRoute('bank_reports_import');
         }
 
+        // ✅ шинэ upload form
         return $this->render('upload.html.twig');
     }
 
@@ -89,10 +86,8 @@ final class ReportController extends AbstractController
                 return $this->redirectToRoute('login');
             }
 
-            // prod дээр ч багана байна уу гэдгийг баталгаажуулъя
             $this->ensureColumns($em);
 
-            // --- Шүүлтүүд
             $opening = $request->query->get('opening', $_ENV['OPENING_BALANCE'] ?? 0);
             $opening = is_numeric($opening) ? (float)$opening : 0.0;
 
@@ -104,7 +99,6 @@ final class ReportController extends AbstractController
             $q         = trim((string)$request->query->get('q', ''));
             $customerQ = trim((string)$request->query->get('customer', ''));
 
-            // --- Хуудаслалт
             $allowedPer = [30, 40, 50, 100, 200];
             $perPage = (int) ($request->query->get('perPage', 30));
             if (!in_array($perPage, $allowedPer, true)) $perPage = 30;
@@ -112,7 +106,6 @@ final class ReportController extends AbstractController
             $page = (int) ($request->query->get('page', 1));
             if ($page < 1) $page = 1;
 
-            // --- Төрлийн жагсаалт (зөвхөн тухайн хэрэглэгчийн датагаас)
             $typesRows = $repo->createQueryBuilder('t')
                 ->select('DISTINCT t.category')
                 ->where('t.user = :u')
@@ -126,7 +119,6 @@ final class ReportController extends AbstractController
                 if ($val !== null && $val !== '') $types[] = $val;
             }
 
-            // --- Харилцагчийн жагсаалт (distinct, зөвхөн тухайн хэрэглэгчийнх)
             $customersRows = $repo->createQueryBuilder('t2')
                 ->select('DISTINCT t2.customer')
                 ->where('t2.user = :u')
@@ -140,7 +132,6 @@ final class ReportController extends AbstractController
                 if ($val !== null && $val !== '') $customers[] = $val;
             }
 
-            // --- Нийт шүүлттэй QB (зөвхөн тухайн хэрэглэгчийн мөрүүд)
             $baseQb = $repo->createQueryBuilder('t')
                 ->andWhere('t.user = :u')->setParameter('u', $user)
                 ->orderBy('t.date', 'ASC')
@@ -172,7 +163,6 @@ final class ReportController extends AbstractController
                 $baseQb->andWhere('t.customer = :cust')->setParameter('cust', $customerQ);
             }
 
-            // --- Нийт тоо
             $countQb = clone $baseQb;
             $countQb->resetDQLPart('orderBy');
             $totalCount = (int) $countQb->select('COUNT(t.id)')->getQuery()->getSingleScalarResult();
@@ -181,7 +171,6 @@ final class ReportController extends AbstractController
             if ($page > $totalPages) $page = $totalPages;
             $offset = ($page - 1) * $perPage;
 
-            // --- Нийт дүн
             $sumQb = clone $baseQb;
             $sumQb->resetDQLPart('orderBy');
             $sumQb->select(
@@ -193,7 +182,6 @@ final class ReportController extends AbstractController
             $expense = (float)($sums['expenseSum'] ?? 0);
             $balance = $opening + ($income - $expense);
 
-            // --- КАСС vs ХАРИЛЦАХ нийлбэр
             $sumOriginQb = clone $baseQb;
             $sumOriginQb->resetDQLPart('orderBy');
             $sumOriginQb->select(
@@ -216,14 +204,12 @@ final class ReportController extends AbstractController
                 ],
             ];
 
-            // --- Энэ хуудсын мөрүүд
             $pageQb = clone $baseQb;
             $rows = $pageQb
                 ->setFirstResult($offset)
                 ->setMaxResults($perPage)
                 ->getQuery()->getResult();
 
-            // --- Энэ хуудсын эхлэх үлдэгдэл
             $startBalance = $opening;
             if ($offset > 0) {
                 $prevQb = clone $baseQb;
@@ -237,7 +223,8 @@ final class ReportController extends AbstractController
                 $startBalance += $netBefore;
             }
 
-            return $this->render('report/summary.html.twig', [
+            // ✅ шинэ журналын загвар — templates/summary.html.twig
+            return $this->render('summary.html.twig', [
                 'income'         => $income,
                 'expense'        => $expense,
                 'balance'        => $balance,
@@ -274,13 +261,10 @@ final class ReportController extends AbstractController
         }
     }
 
-    /**
-     * 'origin' болон 'customer' баганууд байхгүй бол үүсгэнэ (Postgres/SQLite-д аюулгүй).
-     */
     private function ensureColumns(EntityManagerInterface $em): void
     {
         $conn = $em->getConnection();
-        $platform = $conn->getDatabasePlatform()->getName(); // 'postgresql' | 'sqlite' | ...
+        $platform = $conn->getDatabasePlatform()->getName();
 
         if ($platform === 'postgresql') {
             $conn->executeStatement('ALTER TABLE "transaction" ADD COLUMN IF NOT EXISTS origin VARCHAR(16) NULL');
@@ -301,7 +285,6 @@ final class ReportController extends AbstractController
                 $conn->executeStatement('ALTER TABLE "transaction" ADD COLUMN customer VARCHAR(120) NULL');
             }
         } else {
-            // Бусад платформ – энгийн шалгалт
             foreach (['origin' => 'VARCHAR(16)', 'customer' => 'VARCHAR(120)'] as $name => $type) {
                 try {
                     $conn->executeStatement('SELECT '.$name.' FROM "transaction" WHERE 1=0');

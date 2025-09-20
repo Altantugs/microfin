@@ -1,9 +1,7 @@
-# config/routes.yaml — PRODUCTION-READY
 controllers:
   resource: ../src/Controller/
   type: attribute
 
-# Public pages (no auth)
 public_home:
   path: /
   controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
@@ -29,57 +27,58 @@ public_contact:
   controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
   defaults: { template: 'public/contact.html.twig' }
 
-# App home → Bank reports (ONLY ONE app_home!)
 app_home:
   path: /app
   controller: Symfony\Bundle\FrameworkBundle\Controller\RedirectController
   defaults: { route: bank_reports_home, permanent: false }
 
-# Bank reports (reuse existing templates)
+# Дансны хуулгын хэсэг
 bank_reports_home:
   path: /app/reports/bank
   controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
-  defaults: { template: 'reports.html.twig' }
+  defaults: { template: 'reports/bank/menu.html.twig' }
 
 bank_reports_import:
   path: /app/reports/bank/import
-  controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
-  defaults: { template: 'upload.html.twig' }
+  controller: App\Controller\ReportController::upload
 
 bank_reports_prepare:
   path: /app/reports/bank/prepare
-  controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
-  defaults: { template: 'summary.html.twig' }
+  controller: App\Controller\ReportController::summary
 
-# Profile (temporary templates)
+bank_reports_statement:
+  path: /app/reports/bank/statement
+  controller: App\Controller\ReportController::summary
+
+# Профайл руу чиглүүлэх
 app_profile_home:
   path: /app/profile
-  controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
-  defaults: { template: 'users.html.twig' }
+  controller: Symfony\Bundle\FrameworkBundle\Controller\RedirectController
+  defaults: { path: /profile, permanent: false }
 
 app_profile_email:
   path: /app/profile/security/email
-  controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
-  defaults: { template: 'change_email.html.twig' }
+  controller: Symfony\Bundle\FrameworkBundle\Controller\RedirectController
+  defaults: { path: /profile/change-email, permanent: false }
 
 app_profile_password:
   path: /app/profile/security/password
-  controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
-  defaults: { template: 'change_password.html.twig' }
+  controller: Symfony\Bundle\FrameworkBundle\Controller\RedirectController
+  defaults: { path: /profile/change-password, permanent: false }
 
-# Reports index → redirect to bank reports
+# Тайлангийн үндсэн линк → банк руу
 app_reports_home:
   path: /app/reports
   controller: Symfony\Bundle\FrameworkBundle\Controller\RedirectController
   defaults: { route: bank_reports_home, permanent: false }
 
-# Legacy /reports → new bank reports
+# Хуучин линк
 legacy_reports_redirect:
   path: /reports
   controller: Symfony\Bundle\FrameworkBundle\Controller\RedirectController
   defaults: { route: bank_reports_home, permanent: false }
 
-# EBARIMT routes
+# EBARIMT
 app_reports_ebarimt_home:
   path: /app/reports/ebarimt
   controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
@@ -99,3 +98,12 @@ app_reports_ebarimt_history:
   path: /app/reports/ebarimt/history
   controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
   defaults: { template: 'reports/ebarimt/history.html.twig' }
+
+# Legacy direct endpoints
+upload_legacy:
+  path: /upload
+  controller: App\Controller\ReportController::upload
+
+summary_legacy:
+  path: /summary
+  controller: App\Controller\ReportController::summary

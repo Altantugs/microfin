@@ -4,10 +4,27 @@
   <meta charset="UTF-8">
   <title>{% block title %}Microfin{% endblock %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% block stylesheets %}{% endblock %}
 </head>
 <body>
-{% include '_nav_public.html.twig' %}
-{% include '_nav_app.html.twig' %}
-{% block body %}{% endblock %}
+  {% if is_granted('ROLE_USER') %}
+    {% include '_nav_app.html.twig' %}
+  {% else %}
+    {% include '_nav_public.html.twig' %}
+  {% endif %}
+
+  <main style="max-width:1100px;margin:0 auto;padding:16px;">
+    {% for label, messages in app.flashes %}
+      {% for message in messages %}
+        <div class="flash {{ label }}" style="margin:8px 0;padding:10px;border-radius:8px;background:#f6f6f6;">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endfor %}
+
+    {% block body %}{% endblock %}
+  </main>
+
+  {% block javascripts %}{% endblock %}
 </body>
 </html>
