@@ -47,8 +47,7 @@ bank_reports_prepare:
 
 bank_reports_statement:
   path: /app/reports/bank/statement
-  controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
-  defaults: { template: 'summary.html.twig' }
+  controller: App\Controller\ReportController::summary
 
 app_profile_home:
   path: /app/profile
