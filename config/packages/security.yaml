@@ -50,6 +50,7 @@ security:
         parameter: _switch_user
 
   access_control:
+    - { path: ^/dev/reset-pass$, roles: PUBLIC_ACCESS }
     # Public
     - { path: ^/healthz$,  roles: PUBLIC_ACCESS }
     - { path: ^/assets,    roles: PUBLIC_ACCESS }
