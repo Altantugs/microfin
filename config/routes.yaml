@@ -35,7 +35,8 @@ app_home:
 # ⬇️ Дансны хуулгын ROUTE-уудыг жинхэнэ Controller action руу холбоно
 bank_reports_home:
   path: /app/reports/bank
-  controller: App\Controller\ReportController::summary
+  controller: Symfony\Bundle\FrameworkBundle\Controller\TemplateController
+  defaults: { template: 'reports/bank/menu.html.twig' }
 
 
 bank_reports_import:
