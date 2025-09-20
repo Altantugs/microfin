@@ -1,0 +1,61 @@
+security:
+  role_hierarchy:
+    ROLE_ADMIN: [ROLE_USER]
+
+  password_hashers:
+    App\Entity\User: 'auto'
+
+  providers:
+    app_user_provider:
+      entity:
+        class: App\Entity\User
+        property: email
+
+  firewalls:
+    dev:
+      pattern: ^/(?:_profiler|_wdt|_error)
+      security: false
+
+    main:
+      lazy: true
+      provider: app_user_provider
+
+      login_throttling:
+        max_attempts: 5
+        interval: '1 minute'
+
+      user_checker: App\Security\UserChecker
+
+      form_login:
+        login_path: app_login
+        check_path: app_login
+        enable_csrf: true
+        csrf_parameter: _csrf_token
+        csrf_token_id: authenticate
+        username_parameter: _username
+        password_parameter: _password
+        use_forward: false
+        default_target_path: /app
+
+      logout:
+        path: app_logout
+        target: /
+
+      remember_me:
+        secret: '%kernel.secret%'
+        lifetime: 1209600
+        path: /
+
+      switch_user:
+        role: ROLE_ADMIN
+        parameter: _switch_user
+
+  access_control:
+    - { path: ^/healthz$,  roles: PUBLIC_ACCESS }
+    - { path: ^/assets,    roles: PUBLIC_ACCESS }
+    - { path: ^/login$,    roles: PUBLIC_ACCESS }
+    - { path: ^/register$, roles: PUBLIC_ACCESS }
+    - { path: ^/logout$,   roles: PUBLIC_ACCESS }
+    - { path: ^/(|intro|guide|pricing|contact)$, roles: PUBLIC_ACCESS }
+    - { path: ^/admin,     roles: ROLE_ADMIN }
+    - { path: ^/app,       roles: ROLE_USER }
