@@ -77,7 +77,7 @@ final class ReportController extends AbstractController
             return $this->redirectToRoute('upload_excel');
         }
 
-        return $this->render('report/upload.html.twig');
+        return $this->render('upload.html.twig');
     }
 
     #[Route('/report', name: 'report_summary', methods: ['GET'])]
