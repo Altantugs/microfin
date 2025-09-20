@@ -19,14 +19,12 @@
 </style>
 
 <div class="auth" role="region" aria-labelledby="login-title">
-  {# Security error #}
   {% if error %}
     <div class="alert error" role="alert">
       {{ error.messageKey|trans(error.messageData, 'security') }}
     </div>
   {% endif %}
 
-  {# Flash messages #}
   {% for msg in app.flashes('success') %}
     <div class="alert success" role="status">{{ msg }}</div>
   {% endfor %}
@@ -41,14 +39,13 @@
     </p>
   {% else %}
     <form method="post" action="{{ path('app_login') }}" aria-describedby="login-help">
-      <label for="username">Имэйл</label>
-      <input id="username" type="text" name="_username" value="{{ last_username|default('') }}"
+      <label for="email">Имэйл</label>
+      <input id="email" type="email" name="email" value="{{ last_username|default('') }}"
              autocomplete="email" required autofocus>
 
       <label for="password">Нууц үг</label>
-      <input id="password" type="password" name="_password" autocomplete="current-password" required>
+      <input id="password" type="password" name="password" autocomplete="current-password" required>
 
-      {# CSRF — security.yaml: enable_csrf: true, csrf_parameter: _csrf_token, csrf_token_id: authenticate #}
       <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
 
       <div id="login-help" class="muted">Нэвтрэхдээ имэйл хаяг, нууц үгээ зөв оруулна уу.</div>

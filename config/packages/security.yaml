@@ -21,12 +21,10 @@ security:
       lazy: true
       provider: app_user_provider
 
-      # Нэвтрэлтийн оролдлогын хурдыг хязгаарлах
       login_throttling:
         max_attempts: 5
         interval: '1 minute'
 
-      # Танд байгаа хэрэглэгч шалгагч
       user_checker: App\Security\UserChecker
 
       form_login:
@@ -35,10 +33,10 @@ security:
         enable_csrf: true
         csrf_parameter: _csrf_token
         csrf_token_id: authenticate
-        username_parameter: _username     # ✅ form-той таарсан
-        password_parameter: _password     # ✅ form-той таарсан
+        username_parameter: email       # ← form: <input name="email">
+        password_parameter: password    # ← form: <input name="password">
         use_forward: false
-        default_target_path: /app         # амжилттай нэвтэрсний дараах чиглэл
+        default_target_path: /app
 
       logout:
         path: app_logout
@@ -46,7 +44,7 @@ security:
 
       remember_me:
         secret: '%kernel.secret%'
-        lifetime: 1209600    # 14 хоног
+        lifetime: 1209600
         path: /
 
       switch_user:
@@ -54,16 +52,11 @@ security:
         parameter: _switch_user
 
   access_control:
-    # Public
     - { path: ^/healthz$,  roles: PUBLIC_ACCESS }
     - { path: ^/assets,    roles: PUBLIC_ACCESS }
     - { path: ^/login$,    roles: PUBLIC_ACCESS }
     - { path: ^/register$, roles: PUBLIC_ACCESS }
     - { path: ^/logout$,   roles: PUBLIC_ACCESS }
     - { path: ^/(|intro|guide|pricing|contact)$, roles: PUBLIC_ACCESS }
-
-    # Admin
-    - { path: ^/admin, roles: ROLE_ADMIN }
-
-    # App (authenticated)
-    - { path: ^/app, roles: ROLE_USER }
+    - { path: ^/admin,     roles: ROLE_ADMIN }
+    - { path: ^/app,       roles: ROLE_USER }
