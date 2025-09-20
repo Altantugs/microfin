@@ -3,50 +3,64 @@
 namespace App\Controller;
 
 use App\Entity\User;
-use App\Repository\UserRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 final class DevAuthDiagController extends AbstractController
 {
-    #[Route('/dev/check-pass', name: 'dev_check_pass', methods: ['GET'])]
-    public function check(
-        Request $req,
-        UserRepository $users,
-        UserPasswordHasherInterface $hasher,
-    ): Response {
-        $seed = $_ENV['SEED_TOKEN'] ?? null;
-        if (!$seed || $req->query->get('token') !== $seed) {
+    private const TOKEN_ENV = 'SEED_TOKEN';
+
+    private function checkToken(Request $request): ?Response
+    {
+        $got = (string) $request->query->get('token', '');
+        $exp = (string) ($_ENV[self::TOKEN_ENV] ?? '');
+        if ($exp === '' || !hash_equals($exp, $got)) {
             return new Response('Forbidden', 403);
         }
+        return null;
+    }
 
-        $email = (string) $req->query->get('email', '');
-        $pass  = (string) $req->query->get('pass', '');
+    #[Route('/dev/check-pass', name: 'dev_check_pass', methods: ['GET'])]
+    public function checkPass(
+        Request $request,
+        EntityManagerInterface $em,
+        UserPasswordHasherInterface $hasher
+    ): Response {
+        if ($resp = $this->checkToken($request)) return $resp;
 
-        if ($email === '' || $pass === '') {
-            return new Response("Usage: /dev/check-pass?token=SEED_TOKEN&email=...&pass=...", 400);
-        }
+        $email = (string) $request->query->get('email', '');
+        $pass  = (string) $request->query->get('pass', '');
 
-        /** @var User|null $user */
-        $user = $users->findOneBy(['email' => $email]);
-
+        $user = $em->getRepository(User::class)->findOneBy(['email' => $email]);
         if (!$user) {
-            return new Response("NOT FOUND: $email", 404);
+            return new Response("NO | user not found", 404);
         }
 
         $ok = $hasher->isPasswordValid($user, $pass);
-
         $roles = implode(',', $user->getRoles());
-        $status = $user->getStatus();
-        $expires = $user->getExpiresAt()?->format('c') ?? 'null';
+        $status = method_exists($user, 'getStatus') ? $user->getStatus() : 'N/A';
+        $expires = method_exists($user, 'getExpiresAt') && $user->getExpiresAt() ? $user->getExpiresAt()->format(\DateTimeInterface::ATOM) : 'null';
 
-        return new Response(
-            ($ok ? 'OK' : 'NO') . " | email={$email} | roles=[{$roles}] | status={$status} | expires_at={$expires}\n",
-            $ok ? 200 : 401,
-            ['Content-Type' => 'text/plain']
-        );
+        return new Response(($ok ? 'OK' : 'NO') . " | email={$user->getEmail()} | roles=[{$roles}] | status={$status} | expires_at={$expires}");
+    }
+
+    #[Route('/dev/whoami', name: 'dev_whoami', methods: ['GET'])]
+    public function whoAmI(Request $request): Response
+    {
+        if ($resp = $this->checkToken($request)) return $resp;
+
+        if (!$this->getUser()) {
+            return new Response('ANON');
+        }
+
+        /** @var User $u */
+        $u = $this->getUser();
+        $roles = implode(',', $u->getRoles());
+        return new Response('AUTH | email='.$u->getEmail().' | roles=['.$roles.']');
     }
 }
