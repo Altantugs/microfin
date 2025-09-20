@@ -18,6 +18,8 @@
   .pagination .active{background:#eee;font-weight:600}
   .center{text-align:center}
   .right{text-align:right;white-space:nowrap}
+  .cell-input{width:100%;box-sizing:border-box;padding:6px;border:1px solid #ccc;border-radius:4px}
+  .cell-input:focus{outline:2px solid #a7c7ff;border-color:#7aa2ff}
 </style>
 
 <form class="toolbar" method="get" action="{{ path(app.request.attributes.get('_route'), app.request.query.all|merge({'page': 1})) }}">
@@ -110,8 +112,16 @@
       <tr data-origin="{{ (r.origin ?? '')|upper }}">
         <td class="center">{{ pagination.offset + loop.index }}</td>
         <td>{{ r.date ? r.date|date('Y-m-d') : '' }}</td>
-        <td>{{ r.description ?? '' }}</td>
-        <td>{{ r.customer ?? '' }}</td>
+
+        {# ✅ Гүйлгээний утга — засдаг #}
+        <td>
+          <input class="cell-input desc-input" type="text" value="{{ r.description ?? '' }}">
+        </td>
+
+        {# ✅ Харилцагч — засдаг #}
+        <td>
+          <input class="cell-input cust-input" type="text" value="{{ r.customer ?? '' }}">
+        </td>
 
         <td class="right">{{ debit  ? (debit|number_format(0,'.',','))  : '' }}</td>
         <td>
@@ -160,24 +170,56 @@
   const globalSearch=document.getElementById('globalSearch');
   const norm=s=>String(s||'').toLowerCase().trim();
 
+  function cellText(tr, col){
+    const cell = tr.cells[col];
+    if(!cell) return '';
+    const el = cell.querySelector('input,select,textarea');
+    if(el) return (el.value||'').toString();
+    return (cell.innerText||'').toString();
+  }
+
   function pass(tr){
     for(const inp of inputs){
       const q=norm(inp.value); if(!q) continue;
-      const col=+inp.dataset.col, cell=tr.cells[col]?.innerText||'';
-      if(!norm(cell).includes(q)) return false;
+      const col=+inp.dataset.col, val=cellText(tr,col);
+      if(!norm(val).includes(q)) return false;
     }
     if(vatOnly && vatOnly.checked){
       const cb=tr.cells[9]?.querySelector('input[type="checkbox"]');
       if(!(cb&&cb.checked)) return false;
     }
     const gq=norm(globalSearch?.value||'');
-    if(gq && !norm(tr.innerText).includes(gq)) return false;
+    if(gq){
+      const concat = [...tr.cells].map((_,i)=>cellText(tr,i)).join(' ');
+      if(!norm(concat).includes(gq)) return false;
+    }
     return true;
   }
+
   function apply(){ rows.forEach(tr=>tr.style.display=pass(tr)?'':'none'); }
+
+  // per-column, VAT-only, global search
   inputs.forEach(i=>i.addEventListener('input',apply));
   vatOnly?.addEventListener('change',apply);
   globalSearch?.addEventListener('input',apply);
+
+  // ✅ засварласан утгууд шүүлтэнд шууд тусна
+  table.addEventListener('input', (e)=>{
+    if(e.target && e.target.matches('.cust-input,.desc-input')) apply();
+  });
+
+  // ✅ Enter/Shift+Enter дарахад мөр хооронд хурдан шилжих
+  table.addEventListener('keydown', (e)=>{
+    if(!(e.target instanceof HTMLInputElement)) return;
+    if(!e.target.matches('.cust-input,.desc-input')) return;
+    const tr = e.target.closest('tr');
+    const cls = e.target.classList.contains('cust-input') ? '.cust-input' : '.desc-input';
+    if(e.key==='Enter'){
+      e.preventDefault();
+      const next = e.shiftKey ? tr?.previousElementSibling : tr?.nextElementSibling;
+      next?.querySelector(cls)?.focus();
+    }
+  });
 })();
 </script>
 {% endblock %}
