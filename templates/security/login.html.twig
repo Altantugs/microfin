@@ -35,7 +35,7 @@
     <div class="alert error">{{ msg }}</div>
   {% endfor %}
 
-  {# If already logged in, show logout #}
+  {# Хэрэв аль хэдийн нэвтэрсэн бол гарах линк #}
   {% if app.user %}
     <p class="muted">
       Нэвтэрсэн: <strong>{{ app.user.userIdentifier ?? app.user.email }}</strong>
@@ -49,6 +49,7 @@
            type="text"
            name="_username"
            value="{{ last_username|default('') }}"
+           inputmode="email"
            autocomplete="email"
            required
            autofocus>
@@ -60,7 +61,10 @@
            autocomplete="current-password"
            required>
 
-    {# CSRF token — security.yaml: form_login.enable_csrf:true үед идэвхтэй #}
+    {# Нэвтэрсний дараа очих зам (хүсвэл өөрчилж болно) #}
+    <input type="hidden" name="_target_path" value="/app">
+
+    {# CSRF token — form_login.enable_csrf:true үед заавал #}
     <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
 
     <div class="row">
