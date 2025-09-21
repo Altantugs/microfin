@@ -11,8 +11,8 @@ security:
     app_user_provider:
       entity:
         class: App\Entity\User
-        property: email        # И-мэйлээр хэрэглэгч уншина
-        manager_name: default  # ✅ ЯГ энэ entity manager-ийг ашигла гэж ТОДОРХОЙ зааж байна
+        property: email
+        manager_name: default
 
   firewalls:
     dev:
@@ -23,20 +23,19 @@ security:
       lazy: true
       provider: app_user_provider
 
-      # Нэвтрэлтийн оролдлогын хурдыг хязгаарлах
       login_throttling:
         max_attempts: 5
         interval: '1 minute'
 
-      # user_checker асаах шаардлагатай бол доорх мөрийг тайл
+      # Хэрэв хэрэглэгчийн төлөв шалгах бол идэвхжүүлнэ
       # user_checker: App\Security\UserChecker
 
       form_login:
-        login_path: app_login
-        check_path: app_login
-        enable_csrf: false
-        username_parameter: email
-        password_parameter: password
+        login_path: app_login          # = /login
+        check_path: app_login          # = /login
+        enable_csrf: false             # Түр унтраасан (login-аа эхлээд ажиллуулна)
+        username_parameter: _username  # ⬅️ СТАНДАРТ
+        password_parameter: _password  # ⬅️ СТАНДАРТ
 
       logout:
         path: app_logout
@@ -44,7 +43,7 @@ security:
 
       remember_me:
         secret: '%kernel.secret%'
-        lifetime: 1209600   # 14 хоног
+        lifetime: 1209600
         path: /
 
       switch_user:
