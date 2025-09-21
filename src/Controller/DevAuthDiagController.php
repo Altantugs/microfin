@@ -3,13 +3,14 @@
 namespace App\Controller;
 
 use App\Entity\User;
+use App\Repository\UserRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
-use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 final class DevAuthDiagController extends AbstractController
 {
@@ -36,7 +37,18 @@ final class DevAuthDiagController extends AbstractController
         $email = (string) $request->query->get('email', '');
         $pass  = (string) $request->query->get('pass', '');
 
-        $user = $em->getRepository(User::class)->findOneBy(['email' => $email]);
+        if ($email === '' || $pass === '') {
+            return new Response('email & pass are required', 400);
+        }
+
+        // Case-insensitive user lookup
+        $qb = $em->getRepository(User::class)->createQueryBuilder('u')
+            ->andWhere('LOWER(u.email) = LOWER(:e)')
+            ->setParameter('e', $email)
+            ->setMaxResults(1);
+
+        /** @var ?User $user */
+        $user = $qb->getQuery()->getOneOrNullResult();
         if (!$user) {
             return new Response("NO | user not found", 404);
         }
@@ -44,7 +56,9 @@ final class DevAuthDiagController extends AbstractController
         $ok = $hasher->isPasswordValid($user, $pass);
         $roles = implode(',', $user->getRoles());
         $status = method_exists($user, 'getStatus') ? $user->getStatus() : 'N/A';
-        $expires = method_exists($user, 'getExpiresAt') && $user->getExpiresAt() ? $user->getExpiresAt()->format(\DateTimeInterface::ATOM) : 'null';
+        $expires = method_exists($user, 'getExpiresAt') && $user->getExpiresAt()
+            ? $user->getExpiresAt()->format(\DateTimeInterface::ATOM)
+            : 'null';
 
         return new Response(($ok ? 'OK' : 'NO') . " | email={$user->getEmail()} | roles=[{$roles}] | status={$status} | expires_at={$expires}");
     }
@@ -54,13 +68,50 @@ final class DevAuthDiagController extends AbstractController
     {
         if ($resp = $this->checkToken($request)) return $resp;
 
-        if (!$this->getUser()) {
+        $u = $this->getUser();
+        if (!$u instanceof User) {
             return new Response('ANON');
         }
 
-        /** @var User $u */
-        $u = $this->getUser();
         $roles = implode(',', $u->getRoles());
-        return new Response('AUTH | email='.$u->getEmail().' | roles=['.$roles.']');
+        return new Response('AUTH | email=' . $u->getEmail() . ' | roles=[' . $roles . ']');
+    }
+
+    /**
+     * Давхардал/огт олдохгүй зэргийг оношлох JSON dump.
+     * GET /dev/user-dump?token=...&email=admin@example.com
+     */
+    #[Route('/dev/user-dump', name: 'dev_user_dump', methods: ['GET'])]
+    public function userDump(Request $request, UserRepository $repo): Response
+    {
+        if ($resp = $this->checkToken($request)) return $resp;
+
+        $email = (string) $request->query->get('email', '');
+        if ($email === '') {
+            return new Response('email=? required', 400);
+        }
+
+        $rows = $repo->createQueryBuilder('u')
+            ->andWhere('LOWER(u.email) = LOWER(:e)')
+            ->setParameter('e', $email)
+            ->orderBy('u.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        $out = [];
+        /** @var User $u */
+        foreach ($rows as $u) {
+            $out[] = [
+                'id'          => $u->getId(),
+                'email'       => $u->getEmail(),
+                'roles'       => $u->getRoles(),
+                'status'      => method_exists($u, 'getStatus') ? $u->getStatus() : null,
+                'createdAt'   => method_exists($u, 'getCreatedAt') && $u->getCreatedAt()
+                                ? $u->getCreatedAt()->format('c') : null,
+                'pass_prefix' => substr((string)$u->getPassword(), 0, 20), // зөвхөн эхний 20 тэмдэгт
+            ];
+        }
+
+        return new JsonResponse(['count' => count($rows), 'items' => $out]);
     }
 }
