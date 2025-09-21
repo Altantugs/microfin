@@ -31,11 +31,13 @@ security:
       # user_checker: App\Security\UserChecker
 
       form_login:
-        login_path: app_login      # ROUTE НЭР (=/login)
-        check_path: app_login      # ROUTE НЭР (=/login)
+        login_path: app_login        # (= /login)
+        check_path: app_login        # (= /login)
         enable_csrf: true
         csrf_parameter: _csrf_token
         csrf_token_id: authenticate
+        username_parameter: _username  # ✅ чиний формтой 1:1 тааруулж ил тод заалаа
+        password_parameter: _password  # ✅
 
       logout:
         path: app_logout
@@ -43,7 +45,7 @@ security:
 
       remember_me:
         secret: '%kernel.secret%'
-        lifetime: 1209600    # 14 хоног
+        lifetime: 1209600   # 14 хоног
         path: /
 
       switch_user:
@@ -51,7 +53,7 @@ security:
         parameter: _switch_user
 
   access_control:
-    # Оношилгоо — ДЕПЛОЙД ҮЛДЭЭЖ БОЛОХГҮЙ (түр нээж ашиглаад хаа)
+    # ОНОШИЛГОО (DEPLOY-д удаан үлдээхгүй)
     - { path: ^/dev/check-pass$, roles: PUBLIC_ACCESS }
     - { path: ^/dev/reset-pass$, roles: PUBLIC_ACCESS }
 
