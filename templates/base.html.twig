@@ -5,6 +5,7 @@
   <title>{% block title %}Microfin{% endblock %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   {% block stylesheets %}{% endblock %}
+  <link rel="icon" href="{{ asset('favicon.ico') }}">
 </head>
 <body>
   {% if is_granted('ROLE_USER') %}
