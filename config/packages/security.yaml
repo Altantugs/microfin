@@ -41,7 +41,7 @@ security:
 
       remember_me:
         secret: '%kernel.secret%'
-        lifetime: 1209600
+        lifetime: 1209600 # 14 days
         path: /
 
       switch_user:
@@ -49,9 +49,6 @@ security:
         parameter: _switch_user
 
   access_control:
-    - { path: ^/dev/check-pass$, roles: PUBLIC_ACCESS }
-    - { path: ^/dev/reset-pass$, roles: PUBLIC_ACCESS }
-
     # Public
     - { path: ^/healthz$,  roles: PUBLIC_ACCESS }
     - { path: ^/assets,    roles: PUBLIC_ACCESS }
