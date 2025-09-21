@@ -9,6 +9,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Csrf\CsrfToken;
@@ -145,5 +146,47 @@ final class DevAuthDiagController extends AbstractController
         ];
 
         return new JsonResponse($payload);
+    }
+
+    /**
+     * 🧪 CSRF токен үүсгэж, тухайн session ID-тай нь буцаана.
+     * GET /dev/csrf-token?token=...
+     */
+    #[Route('/dev/csrf-token', name: 'dev_csrf_token', methods: ['GET'])]
+    public function csrfToken(Request $r, SessionInterface $session, CsrfTokenManagerInterface $csrf): Response
+    {
+        if ($resp = $this->checkToken($r)) return $resp;
+
+        $session->start();
+        $sid = $session->getId();
+
+        // form_login-д ашиглагддаг ижил id
+        $token = $csrf->getToken('authenticate')->getValue();
+
+        return new JsonResponse([
+            'session_id' => $sid,
+            'csrf_token' => $token,
+        ]);
+    }
+
+    /**
+     * 🧪 Session sticky эсэхийг баталгаажуулах ping.
+     * GET /dev/session-ping?token=...
+     */
+    #[Route('/dev/session-ping', name: 'dev_session_ping', methods: ['GET'])]
+    public function sessionPing(Request $r, SessionInterface $session): Response
+    {
+        if ($resp = $this->checkToken($r)) return $resp;
+
+        $session->start();
+        $sid = $session->getId();
+
+        $n = (int) $session->get('ping', 0);
+        $session->set('ping', $n + 1);
+
+        return new JsonResponse([
+            'session_id' => $sid,
+            'ping_value' => $n + 1,
+        ]);
     }
 }
