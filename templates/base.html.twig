@@ -1,30 +1,74 @@
+{# templates/base.html.twig #}
 <!DOCTYPE html>
 <html lang="mn">
 <head>
   <meta charset="UTF-8">
   <title>{% block title %}Microfin{% endblock %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  {% block stylesheets %}{% endblock %}
   <link rel="icon" href="{{ asset('favicon.ico') }}">
+
+  {# 🌈 Ямар ч buildгүйгээр ажиллах жижигчүүд #}
+  <style>
+    :root{
+      --bg:#ffffff; --fg:#111827; --muted:#6b7280; --line:#e5e7eb;
+      --ok-bg:#dcfce7; --ok-fg:#166534;
+      --err-bg:#fee2e2; --err-fg:#991b1b;
+      --warn-bg:#fef3c7; --warn-fg:#92400e;
+      --info-bg:#e0f2fe; --info-fg:#075985;
+      --btn:#111; --btn-fg:#fff;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif}
+    main{max-width:1100px;margin:0 auto;padding:16px}
+    header,footer{border-bottom:1px solid var(--line)}
+    .container{max-width:1100px;margin:0 auto;padding:10px 16px}
+    a.btn{display:inline-flex;gap:8px;align-items:center;padding:8px 12px;border:1px solid var(--btn);border-radius:8px;background:var(--btn);color:var(--btn-fg);text-decoration:none}
+    a.btn.outline{background:transparent;color:var(--btn);}
+
+    /* Flash messages */
+    .flashes{display:flex;flex-direction:column;gap:8px;margin:12px 0}
+    .flash{padding:10px 12px;border-radius:10px}
+    .flash.success{background:var(--ok-bg);color:var(--ok-fg)}
+    .flash.error{background:var(--err-bg);color:var(--err-fg)}
+    .flash.warning{background:var(--warn-bg);color:var(--warn-fg)}
+    .flash.info{background:var(--info-bg);color:var(--info-fg)}
+  </style>
+
+  {% block stylesheets %}{% endblock %}
 </head>
 <body>
-  {% if is_granted('ROLE_USER') %}
-    {% include '_nav_app.html.twig' %}
-  {% else %}
-    {% include '_nav_public.html.twig' %}
-  {% endif %}
+  <header>
+    <div class="container" style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+      <a href="{{ path('public_home') }}" style="text-decoration:none;font-weight:700">Microfin</a>
 
-  <main style="max-width:1100px;margin:0 auto;padding:16px;">
-    {% for label, messages in app.flashes %}
-      {% for message in messages %}
-        <div class="flash {{ label }}" style="margin:8px 0;padding:10px;border-radius:8px;background:#f6f6f6;">
-          {{ message }}
-        </div>
+      {# Навигцаа: ROLE_USER байгаа эсэхээр сонгоно #}
+      {% if is_granted('ROLE_USER') %}
+        {% include '_nav_app.html.twig' %}
+      {% else %}
+        {% include '_nav_public.html.twig' %}
+      {% endif %}
+    </div>
+  </header>
+
+  <main>
+    {# Флаш мессежүүд (aria-live: тухайн хуудсанд шинэчлэхэд уншигдана) #}
+    <div class="flashes" aria-live="polite" aria-atomic="true">
+      {% for label, messages in app.flashes %}
+        {% for message in messages %}
+          <div class="flash {{ label }}">{{ message }}</div>
+        {% endfor %}
       {% endfor %}
-    {% endfor %}
+    </div>
 
     {% block body %}{% endblock %}
   </main>
+
+  <footer>
+    <div class="container" style="display:flex;justify-content:space-between;gap:10px;color:#6b7280;">
+      <span>© {{ "now"|date("Y") }} Microfin</span>
+      <span>v{{ app.environment|default('prod') }}</span>
+    </div>
+  </footer>
 
   {% block javascripts %}{% endblock %}
 </body>
