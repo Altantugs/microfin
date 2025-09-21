@@ -34,7 +34,7 @@ security:
       form_login:
         login_path: app_login        # (= /login, route name)
         check_path: app_login        # (= /login, route name)
-        enable_csrf: true
+        enable_csrf: false
         csrf_parameter: _csrf_token
         csrf_token_id: authenticate
         username_parameter: _username  # ✅ Чиний form-той 1:1 тааруулж заалаа
