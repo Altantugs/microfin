@@ -1,9 +1,30 @@
+{# templates/_nav_app.html.twig #}
 {% if is_granted('ROLE_USER') %}
-<nav style="padding:10px 0; border-bottom:1px solid #eee; margin:12px 0;">
-  <a href="/app">Нүүр</a> |
-  <a href="/app/profile">Миний мэдээлэл</a> |
-  <a href="/app/reports/ebarimt">Тайлан бэлтгэх (EBARIMT)</a> |
-  <a href="/app/reports/bank">Тайлан бэлтгэх (Дансны хуулга)</a> |
-  <a href="/contact">Холбоо барих</a>
+<nav style="border-bottom:1px solid #e5e7eb;background:#fff">
+  <div style="max-width:1100px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:16px;justify-content:space-between">
+    <!-- Зүүн талын цэс -->
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <a href="/app" style="text-decoration:none;color:#111">Нүүр</a>
+      <span style="color:#d1d5db">|</span>
+      <a href="/app/profile" style="text-decoration:none;color:#111">Миний мэдээлэл</a>
+      <span style="color:#d1d5db">|</span>
+      <a href="/app/reports/ebarimt" style="text-decoration:none;color:#111">Тайлан (Ebarimt)</a>
+      <span style="color:#d1d5db">|</span>
+      <a href="/app/reports/bank" style="text-decoration:none;color:#111">Тайлан (Дансны хуулга)</a>
+      <span style="color:#d1d5db">|</span>
+      <a href="/contact" style="text-decoration:none;color:#111">Холбоо барих</a>
+    </div>
+
+    <!-- Баруун тал: хэрэглэгч + гарах -->
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="color:#6b7280;font-size:14px">
+        {{ app.user ? (app.user.userIdentifier ?? app.user.email) : '' }}
+      </span>
+      <a href="{{ path('app_logout') }}"
+         style="padding:6px 10px;border:1px solid #111;border-radius:8px;text-decoration:none;color:#fff;background:#111">
+        Гарах
+      </a>
+    </div>
+  </div>
 </nav>
 {% endif %}
