@@ -1,0 +1,13 @@
+monolog:
+  handlers:
+    app:
+      type: stream
+      path: "php://stderr"
+      level: info
+
+    # 🔎 Login/auth дэлгэрэнгүй лог
+    security_debug:
+      type: stream
+      path: "php://stderr"
+      level: debug
+      channels: ["security"]
