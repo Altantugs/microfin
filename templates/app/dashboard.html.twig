@@ -1,0 +1,12 @@
+{% extends 'base.html.twig' %}
+{% block title %}Апп — Нүүр{% endblock %}
+
+{% block body %}
+  <h1 style="margin:0 0 12px;">Нүүр (App Dashboard)</h1>
+  <p class="muted">Эндээс аппын хэсгүүд рүү орно.</p>
+  <ul style="line-height:1.9;">
+    <li><a href="{{ path('app_home') }}">Нүүр</a></li>
+    <li><a href="/app/reports/ebarimt">Тайлан (Ebarimt)</a></li>
+    <li><a href="/app/reports/bank">Тайлан (Данс)</a></li>
+  </ul>
+{% endblock %}
