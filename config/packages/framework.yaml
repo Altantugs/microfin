@@ -4,7 +4,7 @@ framework:
 
   csrf_protection: true
 
-  # ✅ Proxy/Host тохиргоо (env шаардахгүй, Render-д шууд OK)
+  # ✅ Proxy/Host тохиргоо (Render/Cloudflare ард зөв ажиллах)
   trusted_proxies: '127.0.0.1,REMOTE_ADDR'
   trusted_hosts:
     - '^microfin-ui52\.onrender\.com$'
@@ -16,8 +16,9 @@ framework:
     - x-forwarded-port
     - x-forwarded-host
 
+  # ✅ Session-ийг DB дээр хадгална (services.yaml дээрх session.handler.pdo-г ашиглана)
   session:
-    handler_id: null
+    handler_id: 'session.handler.pdo'   # ← өмнөх null-ийг DB handler болгож өөрчиллөө
     name: SFSESSID
     cookie_secure: auto
     cookie_samesite: lax
