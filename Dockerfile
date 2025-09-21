@@ -38,4 +38,4 @@ RUN composer dump-autoload -o --classmap-authoritative
 
 # Render дээр $PORT-оор сонсдог байх ёстой
 EXPOSE 8000
-CMD ["sh", "-lc", "php -S 0.0.0.0:${PORT} -t public"]
+CMD ["sh","-c","php -d variables_order=EGPCS -S 0.0.0.0:${PORT:-10000} -t public public/index.php"]
