@@ -11,7 +11,8 @@ security:
     app_user_provider:
       entity:
         class: App\Entity\User
-        property: email   # И-мэйлээр хэрэглэгч уншина
+        property: email        # И-мэйлээр хэрэглэгч уншина
+        manager_name: default  # ✅ ЯГ энэ entity manager-ийг ашигла гэж ТОДОРХОЙ зааж байна
 
   firewalls:
     dev:
@@ -27,16 +28,16 @@ security:
         max_attempts: 5
         interval: '1 minute'
 
-      # Хэрэглэгчийн төлөв шалгахыг идэвхжүүлэх бол дараахыг асаана
+      # user_checker асаах шаардлагатай бол доорх мөрийг тайл
       # user_checker: App\Security\UserChecker
 
       form_login:
-        login_path: app_login        # (= /login)
-        check_path: app_login        # (= /login)
+        login_path: app_login        # (= /login, route name)
+        check_path: app_login        # (= /login, route name)
         enable_csrf: true
         csrf_parameter: _csrf_token
         csrf_token_id: authenticate
-        username_parameter: _username  # ✅ чиний формтой 1:1 тааруулж ил тод заалаа
+        username_parameter: _username  # ✅ Чиний form-той 1:1 тааруулж заалаа
         password_parameter: _password  # ✅
 
       logout:
