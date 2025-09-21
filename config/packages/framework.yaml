@@ -1,28 +1,25 @@
 # config/packages/framework.yaml
 framework:
   secret: '%env(APP_SECRET)%'
+  handle_all_throwables: true
 
   csrf_protection: true
-  session:
-        handler_id: null
-        cookie_secure: auto
-        cookie_samesite: lax
+  form: true
+  http_method_override: false
 
-  # ✅ Proxy/Host тохиргоо (Render/Cloudflare ард зөв ажиллах)
-  trusted_proxies: '127.0.0.1,REMOTE_ADDR'
+  # ✅ Proxy / Host тохиргоо (Render/Cloudflare)
+  trusted_proxies: ['127.0.0.1', 'REMOTE_ADDR']
+  trusted_headers: ['x-forwarded-for', 'x-forwarded-proto', 'x-forwarded-port', 'x-forwarded-host']
   trusted_hosts:
     - '^microfin-ui52\.onrender\.com$'
     - '^localhost$'
     - '^127\.0\.0\.1$'
-  trusted_headers:
-    - x-forwarded-for
-    - x-forwarded-proto
-    - x-forwarded-port
-    - x-forwarded-host
 
-  # ✅ Session-ийг DB дээр хадгална (services.yaml дээрх session.handler.pdo-г ашиглана)
+  # ✅ Session — ЗӨВХӨН нэг блок (DB handler ашиглана)
   session:
-    handler_id: 'session.handler.pdo'   # ← өмнөх null-ийг DB handler болгож өөрчиллөө
+    enabled: true
+    handler_id: 'session.handler.pdo'        # services.yaml дээрээ session.handler.pdo заасан байх ёстой
+    storage_factory_id: session.storage.factory.native
     name: SFSESSID
     cookie_secure: auto
     cookie_samesite: lax
@@ -30,13 +27,13 @@ framework:
     cookie_lifetime: 0
     gc_maxlifetime: 14400
 
-  form: true
-
   router:
     utf8: true
 
-  http_method_override: false
+  php_errors:
+    log: true
 
+  # ✅ Login throttle (rate limiter)
   rate_limiter:
     login:
       policy: fixed_window
