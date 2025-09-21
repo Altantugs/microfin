@@ -22,10 +22,9 @@ security:
       lazy: true
       provider: app_user_provider
 
-      # login_throttling-ийг түр унтраасан (дараа нь буцаана)
-      # login_throttling:
-      #   max_attempts: 5
-      #   interval: '1 minute'
+      login_throttling:
+        max_attempts: 5
+        interval: '1 minute'
 
       form_login:
         login_path: app_login
