@@ -1,4 +1,3 @@
-# config/packages/security.yaml
 security:
   role_hierarchy:
     ROLE_ADMIN: [ROLE_USER]
@@ -23,31 +22,19 @@ security:
       lazy: true
       provider: app_user_provider
 
-      # Нэвтрэлтийн оролдлого хязгаарлалт
-      login_throttling:
-        max_attempts: 5
-        interval: '1 minute'
-
-      # Хэрэглэгчийн төлөв шалгах шаардлагатай бол асаа
-      # user_checker: App\Security\UserChecker
+      # login_throttling-ийг түр унтраасан (дараа нь буцаана)
+      # login_throttling:
+      #   max_attempts: 5
+      #   interval: '1 minute'
 
       form_login:
-        # Таны SecurityController дээрх /login руу чиглэнэ
         login_path: app_login
         check_path: app_login
-
-        # ✅ CSRF хамгаалалт (login.html.twig дахь hidden _csrf_token-той таарна)
-        enable_csrf: true
-        csrf_parameter: _csrf_token
-        csrf_token_id: authenticate
-
-        # ✅ Формын талбарын нэршил (login.html.twig дээрхтэй 100% таарах ёстой)
+        enable_csrf: false
         username_parameter: _username
         password_parameter: _password
-
-        # Амжилттай нэвтэрсний дараа зориуд нэг хуудас руу үргэлж чиглүүлэх бол доорх 2 мөрийг тайл
-        # always_use_default_target_path: true
-        # default_target_path: /
+        always_use_default_target_path: true
+        default_target_path: /
 
       logout:
         path: app_logout
@@ -55,4 +42,27 @@ security:
 
       remember_me:
         secret: '%kernel.secret%'
-        lifetime: 1209600      # 14 хоно
+        lifetime: 1209600
+        path: /
+
+      switch_user:
+        role: ROLE_ADMIN
+        parameter: _switch_user
+
+  access_control:
+    - { path: ^/dev/check-pass$, roles: PUBLIC_ACCESS }
+    - { path: ^/dev/reset-pass$, roles: PUBLIC_ACCESS }
+
+    # Public
+    - { path: ^/healthz$,  roles: PUBLIC_ACCESS }
+    - { path: ^/assets,    roles: PUBLIC_ACCESS }
+    - { path: ^/login$,    roles: PUBLIC_ACCESS }
+    - { path: ^/register$, roles: PUBLIC_ACCESS }
+    - { path: ^/logout$,   roles: PUBLIC_ACCESS }
+    - { path: ^/(|intro|guide|pricing|contact)$, roles: PUBLIC_ACCESS }
+
+    # Admin
+    - { path: ^/admin,     roles: ROLE_ADMIN }
+
+    # App (authenticated)
+    - { path: ^/app,       roles: ROLE_USER }
