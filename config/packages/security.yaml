@@ -32,13 +32,11 @@ security:
       # user_checker: App\Security\UserChecker
 
       form_login:
-        login_path: app_login        # (= /login, route name)
-        check_path: app_login        # (= /login, route name)
+        login_path: app_login
+        check_path: app_login
         enable_csrf: false
-        csrf_parameter: _csrf_token
-        csrf_token_id: authenticate
-        username_parameter: _username  # ✅ Чиний form-той 1:1 тааруулж заалаа
-        password_parameter: _password  # ✅
+        username_parameter: email
+        password_parameter: password
 
       logout:
         path: app_logout
