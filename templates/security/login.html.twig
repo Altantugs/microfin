@@ -43,7 +43,7 @@
     </p>
   {% endif %}
 
-  <form method="post" action="{{ path('app_login') }}" autocomplete="on" novalidate>
+  <form method="post" action="{{ path('app_login') }}" autocomplete="on">
     <label for="username">Имэйл</label>
     <input id="username"
            type="text"
@@ -60,7 +60,7 @@
            autocomplete="current-password"
            required>
 
-    {# CSRF token — enable_csrf:true үед шаардлагатай #}
+    {# CSRF token — security.yaml: form_login.enable_csrf:true үед идэвхтэй #}
     <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
 
     <div class="row">
