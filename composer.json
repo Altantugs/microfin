@@ -16,6 +16,7 @@
     "monolog/monolog": "^3",
     "phpoffice/phpspreadsheet": "^5.1",
     "ramsey/uuid-doctrine": "^2.1",
+    "symfony/asset": "7.3.*",
     "symfony/console": "7.3.*",
     "symfony/dotenv": "7.3.*",
     "symfony/flex": "^2",
