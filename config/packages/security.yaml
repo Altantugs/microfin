@@ -30,7 +30,7 @@ security:
       form_login:
         login_path: app_login
         check_path: app_login
-        enable_csrf: false
+        enable_csrf: true
         username_parameter: _username
         password_parameter: _password
         always_use_default_target_path: true
