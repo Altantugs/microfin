@@ -5,6 +5,8 @@ namespace App\Controller;
 use App\Service\ExcelImportService;
 use App\Repository\TransactionRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
+use Doctrine\DBAL\Platforms\SqlitePlatform;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -264,12 +266,12 @@ final class ReportController extends AbstractController
     private function ensureColumns(EntityManagerInterface $em): void
     {
         $conn = $em->getConnection();
-        $platform = $conn->getDatabasePlatform()->getName();
+        $platform = $conn->getDatabasePlatform();
 
-        if ($platform === 'postgresql') {
+        if ($platform instanceof PostgreSQLPlatform) {
             $conn->executeStatement('ALTER TABLE "transaction" ADD COLUMN IF NOT EXISTS origin VARCHAR(16) NULL');
             $conn->executeStatement('ALTER TABLE "transaction" ADD COLUMN IF NOT EXISTS customer VARCHAR(120) NULL');
-        } elseif ($platform === 'sqlite') {
+        } elseif ($platform instanceof SqlitePlatform) {
             $sm = $conn->createSchemaManager();
             $table = $sm->introspectTable('transaction');
 
