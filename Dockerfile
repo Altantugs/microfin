@@ -2,12 +2,16 @@
 FROM php:8.3-fpm-alpine AS php
 WORKDIR /app
 
-# ✅ libpq headers + build deps
+# Build deps + runtime headers
 RUN apk add --no-cache \
       icu-dev libzip-dev oniguruma-dev postgresql-dev \
+      libpng-dev libjpeg-turbo-dev freetype-dev \
       git unzip curl bash $PHPIZE_DEPS \
  && docker-php-ext-configure intl \
- && docker-php-ext-install -j"$(nproc)" pdo pdo_pgsql intl
+ # GD: need jpeg+freetype flags on PHP 8.3
+ && docker-php-ext-configure gd --with-jpeg --with-freetype \
+ # Build extensions (parallel)
+ && docker-php-ext-install -j"$(nproc)" pdo pdo_pgsql intl gd zip mbstring
 
 # Composer
 RUN php -r "copy('https://getcomposer.org/installer','composer-setup.php');" \
@@ -22,7 +26,6 @@ RUN COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader \
 FROM caddy:2.8.4-alpine
 WORKDIR /app
 
-# php-fpm binary need
 COPY --from=php /usr/local/bin/php-fpm /usr/local/bin/php-fpm
 COPY --from=php /app /app
 COPY infra/Caddyfile /etc/caddy/Caddyfile
