@@ -1,6 +1,7 @@
 # --- PHP stage ---
 FROM php:8.3-fpm-alpine AS php
 WORKDIR /app
+ENV APP_ENV=prod APP_DEBUG=0
 
 # Build deps + runtime headers
 RUN apk add --no-cache \
@@ -19,12 +20,13 @@ RUN php -r "copy('https://getcomposer.org/installer','composer-setup.php');" \
  && rm composer-setup.php
 
 COPY . /app
-RUN COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader \
+RUN APP_ENV=prod APP_DEBUG=0 COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader \
  && php bin/console cache:clear --env=prod
 
 # --- Web stage ---
 FROM caddy:2.8.4-alpine
 WORKDIR /app
+ENV APP_ENV=prod APP_DEBUG=0
 
 COPY --from=php /usr/local/bin/php-fpm /usr/local/bin/php-fpm
 COPY --from=php /app /app
