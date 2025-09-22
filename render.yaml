@@ -14,7 +14,6 @@ services:
     buildCommand: |
       composer install --no-dev --optimize-autoloader
 
-    # Router script-ийг зааж өгсөн зөв хувилбар
     startCommand: php -S 0.0.0.0:$PORT public/index.php
 
     postdeployCommand: php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
@@ -26,5 +25,12 @@ services:
         value: "0"
       - key: OPENING_BALANCE
         value: "0"
+      - key: APP_SECRET
+        generateValue: true
       - key: DATABASE_URL
-        fromDatabas
+        fromDatabase:
+          name: mini-finance-db
+      - key: SYMFONY_TRUSTED_PROXIES
+        value: "0.0.0.0/0,::/0"
+      - key: SYMFONY_TRUSTED_HOSTS
+        value: ".onrender.com"
