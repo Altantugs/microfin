@@ -1,0 +1,29 @@
+name: CI
+on:
+  push: { branches: [ "**" ] }
+  pull_request: { branches: [ "**" ] }
+jobs:
+  php:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: intl, pdo_pgsql
+          coverage: none
+      - name: Install deps
+        run: composer install --no-interaction --prefer-dist
+      - name: Lint YAML/Twig
+        run: |
+          php bin/console lint:yaml config --parse-tags
+          php bin/console lint:twig templates
+      - name: Validate Doctrine schema
+        env:
+          DATABASE_URL: 'sqlite:///%kernel.project_dir%/var/ci.db'
+        run: |
+          php bin/console doctrine:database:create --if-not-exists
+          php bin/console doctrine:schema:validate --skip-sync
+      - name: PHPUnit (optional)
+        run: |
+          if [ -d tests ]; then ./vendor/bin/phpunit --colors=always; else echo "no tests"; fi

@@ -1,0 +1,15 @@
+:8080 {
+    root * /app/public
+    encode zstd gzip
+    php_fastcgi 127.0.0.1:9000
+    file_server
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Frame-Options "DENY"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "no-referrer"
+        Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    }
+    @healthz { path /healthz }
+    respond @healthz 200
+}

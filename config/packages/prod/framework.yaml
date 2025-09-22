@@ -1,0 +1,10 @@
+framework:
+  trusted_proxies: '%env(TRUSTED_PROXIES)%'
+  trusted_hosts: '%env(TRUSTED_HOSTS)%'
+  session:
+    cookie_secure: 'auto'
+    cookie_samesite: lax
+    cookie_httponly: true
+  http_method_override: false
+  php_errors:
+    log: true
