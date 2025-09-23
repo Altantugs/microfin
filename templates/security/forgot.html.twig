@@ -1,12 +1,16 @@
-{% extends 'base.html.twig' %}
-{% block title %}Нууц үг мартсан уу?{% endblock %}
-{% block body %}
-  <div class="container" style="max-width:560px;margin:2rem auto;">
-    <h1>Нууц үг мартсан уу?</h1>
-    <p>Одоогоор имэйлээр сэргээх урсгал бэлэн биш байна. Түр зууртаа админ танд шинээр нууц үг олгоно.</p>
-    <p style="margin-top:1rem;">
-      <a href="{{ path('app_login') }}">Нэвтрэх рүү буцах</a> ·
-      <a href="{{ path('public_home') }}">Нүүр</a>
-    </p>
-  </div>
-{% endblock %}
+{% for label, messages in app.flashes %}
+  {% for m in messages %}<div class="flash {{ label }}">{{ m }}</div>{% endfor %}
+{% endfor %}
+
+<h1>Нууц үг мартсан уу?</h1>
+<p>Имэйлээ оруулж илгээнэ үү. Хэрэв бүртгэлтэй бол сэргээх линк очно.</p>
+
+<form method="post" action="{{ path('forgot_password') }}">
+  <label for="fp-email">Имэйл</label>
+  <input id="fp-email" name="email" type="email" placeholder="Имэйл" aria-label="Имэйл" autocomplete="email" required>
+  <button type="submit">Илгээх</button>
+</form>
+
+<p style="margin-top:1rem;">
+  <a href="{{ path('app_login') }}">Нэвтрэх рүү буцах</a> · <a href="{{ path('public_home') }}">Нүүр</a>
+</p>

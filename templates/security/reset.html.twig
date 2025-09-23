@@ -1,0 +1,20 @@
+{% for label, messages in app.flashes %}
+  {% for m in messages %}<div class="flash {{ label }}">{{ m }}</div>{% endfor %}
+{% endfor %}
+
+<h1>Шинэ нууц үг тохируулах</h1>
+<p>{{ email }} имэйлтэй хэрэглэгчийн нууц үгийг шинэчилнэ.</p>
+
+<form method="post" action="{{ path('reset_password', { token: token }) }}">
+  <label for="rp-pass">Шинэ нууц үг</label>
+  <input id="rp-pass" name="password" type="password" placeholder="Шинэ нууц үг" aria-label="Шинэ нууц үг" autocomplete="new-password" required>
+
+  <label for="rp-pass2">Дахин оруулах</label>
+  <input id="rp-pass2" name="password_confirm" type="password" placeholder="Дахин оруулах" aria-label="Дахин оруулах" autocomplete="new-password" required>
+
+  <button type="submit">Шинэчлэх</button>
+</form>
+
+<p style="margin-top:1rem;">
+  <a href="{{ path('app_login') }}">Нэвтрэх рүү буцах</a> · <a href="{{ path('public_home') }}">Нүүр</a>
+</p>
