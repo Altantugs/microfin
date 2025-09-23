@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Controller;
+use Symfony\Component\Mime\Address;
 
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
@@ -37,7 +38,8 @@ final class PasswordResetController extends AbstractController
 
                     $mailer->send(
                         (new Email())
-                            ->to($emailStr)
+            ->from(new Address($_ENV["MAILER_FROM"] ?? "no-reply@microfin.local", "Microfin"))
+            ->to($emailStr)
                             ->subject('Нууц үг сэргээх линк')
                             ->text("Доорх линкээр 30 минутын дотор шинээр нууц үгээ тохируулна уу:\n\n".$resetUrl)
                     );
