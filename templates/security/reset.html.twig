@@ -1,7 +1,7 @@
 {% extends 'base.html.twig' %}
-{% block title %}Нууц үг шинэчлэх{% endblock %}
+{% block title %}Нууц үг сэргээх{% endblock %}
 {% block body %}
-  <h1>Нууц үг шинэчлэх</h1>
+  <h1>Нууц үг сэргээх</h1>
 
   {% for label, messages in app.flashes %}
     {% for m in messages %}
@@ -9,14 +9,17 @@
     {% endfor %}
   {% endfor %}
 
-  <form method="post" class="auth" style="max-width:360px">
-    <label for="password">Шинэ нууц үг</label>
-    <input id="password" name="password" type="password" placeholder="Шинэ нууц үг" aria-label="Шинэ нууц үг" autocomplete="new-password" required>
+  {% if token is defined %}
+    <div style="margin:8px 0;color:#666;font-size:.9rem">Token: {{ token }}</div>
+  {% endif %}
 
-    <label for="password2">Давтаж оруулах</label>
-    <input id="password2" name="password2" type="password" placeholder="Давтаж оруулах" aria-label="Давтаж оруулах" autocomplete="new-password" required>
-
-    <button type="submit">Шинэчлэх</button>
+  <form method="post" action="{{ path('reset_password') }}" class="auth" style="max-width:360px">
+    <input type="hidden" name="token" value="{{ token }}">
+    <label for="p1">Шинэ нууц үг</label>
+    <input id="p1" name="password1" type="password" placeholder="Шинэ нууц үг" aria-label="Шинэ нууц үг" autocomplete="new-password" required>
+    <label for="p2">Дахин оруулах</label>
+    <input id="p2" name="password2" type="password" placeholder="Нууц үг давтах" aria-label="Нууц үг давтах" autocomplete="new-password" required>
+    <button type="submit">Нууц үг шинэчлэх</button>
   </form>
 
   <p style="margin-top:1rem">
