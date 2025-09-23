@@ -1,18 +1,21 @@
-<h1>Нууц үг мартсан уу?</h1>
+{% extends 'base.html.twig' %}
+{% block title %}Нууц үг мартсан уу?{% endblock %}
+{% block body %}
+  <h1>Нууц үг мартсан уу?</h1>
 
-{% for label, messages in app.flashes %}
-  {% for msg in messages %}
-    <div class="flash {{ label }}">{{ msg }}</div>
+  {% for label, messages in app.flashes %}
+    {% for m in messages %}
+      <div class="flash-{{ label }}">{{ m }}</div>
+    {% endfor %}
   {% endfor %}
-{% endfor %}
 
-<form method="post" action="{{ path('forgot_password') }}">
-  <label for="email">Имэйл</label>
-  <input id="email" name="email" type="email" required autocomplete="email" placeholder="example@domain.com" aria-label="Имэйл" />
-  <button type="submit">Сэргээх линк авах</button>
-</form>
+  <form method="post" action="{{ path('forgot_password') }}" class="auth" style="max-width:360px">
+    <label for="email">Имэйл</label>
+    <input id="email" name="email" type="email" placeholder="Имэйл" aria-label="Имэйл" autocomplete="email" required>
+    <button type="submit">Сэргээх линк илгээх</button>
+  </form>
 
-<p style="margin-top:1rem;">
-  <a href="{{ path('app_login') }}">Нэвтрэх рүү буцах</a> ·
-  <a href="{{ path('public_home') }}">Нүүр</a>
-</p>
+  <p style="margin-top:1rem">
+    <a href="{{ path('app_login') }}">Нэвтрэх рүү буцах</a> · <a href="{{ path('public_home') }}">Нүүр</a>
+  </p>
+{% endblock %}
