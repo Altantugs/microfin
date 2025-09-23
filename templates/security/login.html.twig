@@ -52,14 +52,14 @@
            inputmode="email"
            autocomplete="email"
            required
-           autofocus>
+           autofocus aria-label="Имэйл" autocomplete="email">
 
     <label for="password">Нууц үг</label>
     <input id="password"
            type="password"
            name="_password"
            autocomplete="current-password"
-           required>
+           required aria-label="Нууц үг" autocomplete="current-password">
 
     {# Нэвтэрсний дараа очих зам (хүсвэл өөрчилж болно) #}
     <input type="hidden" name="_target_path" value="/app">
