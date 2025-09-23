@@ -1,16 +1,18 @@
+<h1>Нууц үг мартсан уу?</h1>
+
 {% for label, messages in app.flashes %}
-  {% for m in messages %}<div class="flash {{ label }}">{{ m }}</div>{% endfor %}
+  {% for msg in messages %}
+    <div class="flash {{ label }}">{{ msg }}</div>
+  {% endfor %}
 {% endfor %}
 
-<h1>Нууц үг мартсан уу?</h1>
-<p>Имэйлээ оруулж илгээнэ үү. Хэрэв бүртгэлтэй бол сэргээх линк очно.</p>
-
 <form method="post" action="{{ path('forgot_password') }}">
-  <label for="fp-email">Имэйл</label>
-  <input id="fp-email" name="email" type="email" placeholder="Имэйл" aria-label="Имэйл" autocomplete="email" required>
-  <button type="submit">Илгээх</button>
+  <label for="email">Имэйл</label>
+  <input id="email" name="email" type="email" required autocomplete="email" placeholder="example@domain.com" aria-label="Имэйл" />
+  <button type="submit">Сэргээх линк авах</button>
 </form>
 
 <p style="margin-top:1rem;">
-  <a href="{{ path('app_login') }}">Нэвтрэх рүү буцах</a> · <a href="{{ path('public_home') }}">Нүүр</a>
+  <a href="{{ path('app_login') }}">Нэвтрэх рүү буцах</a> ·
+  <a href="{{ path('public_home') }}">Нүүр</a>
 </p>
