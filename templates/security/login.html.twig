@@ -22,17 +22,17 @@
 <div class="auth">
   {# Security error #}
   {% if error %}
-    <div class="alert error">
+    <div class="alert error" role="alert" aria-live="polite">
       {{ error.messageKey|trans(error.messageData, 'security') }}
     </div>
   {% endif %}
 
   {# Flash messages #}
   {% for msg in app.flashes('success') %}
-    <div class="alert success">{{ msg }}</div>
+    <div class="alert success" role="alert" aria-live="polite">{{ msg }}</div>
   {% endfor %}
   {% for msg in app.flashes('error') %}
-    <div class="alert error">{{ msg }}</div>
+    <div class="alert error" role="alert" aria-live="polite">{{ msg }}</div>
   {% endfor %}
 
   {# Хэрэв аль хэдийн нэвтэрсэн бол гарах линк #}
